@@ -161,6 +161,4 @@ uint8_t * fftData(fftwf_complex *fftin){
 /*Find Peaks*/
 uint8_t * findpeaks(){
 
-
-
 }

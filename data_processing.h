@@ -31,9 +31,3 @@ uint8_t * fftData();
 
 /*Find Peaks*/
 uint8_t * findpeaks();
-
-
-
-
-
-

@@ -23,11 +23,17 @@ typedef struct deviceCorrelation {
 	double phaseThree;
 };
 
-/*Correlate Data */
+/*
+ * Correlate Data
+ */
 uint8_t correlateData();
 
-/*FFT Data*/
+/*
+ * FFT Data
+ */
 uint8_t * fftData();
 
-/*Find Peaks*/
+/*
+ * Find Peaks
+ */
 uint8_t * findpeaks();

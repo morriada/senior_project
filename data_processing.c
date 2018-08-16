@@ -26,6 +26,9 @@
 /* Signal Processing Includes */
 #include "fftw3.h"
 
+// Include Project Libraries
+#include "data_processing.h"
+
 static int nreceivers = 0, corrlen = 0, fft1n = 0, fft2n = 0;
 
 static int sync_debug = 1;

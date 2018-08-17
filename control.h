@@ -1,5 +1,5 @@
 /*
- * Initialization of System - Initialize peripherals and communication.
+ * control.h - Initialize peripherals and contol their operations.
  * Copyright (C) 2018 Adam Morris <morriada@mail.gvsu.edu>
  * Copyright (C) 2018 Nicholas Borchardt <borcharn@mail.gvsu.edu>
  *
@@ -26,18 +26,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 // Include SDR Library
-#include <rtl-sdr.h>
 #include "rtl-sdr.h"
 
 // Define Macros
 #define NUM_SDRS 3
+#define SIZE 100
 
 // Declare variables and structures
 typedef struct rtlsdr_struct {
-	int blocksize;
+	int blocksize, calibration;
 	uint32_t id;
 	uint8_t *buffer;
 	rtlsdr_dev_t *dev;
@@ -52,7 +53,7 @@ void usage(void);
 
 /*
  * rtlsdr_setup - Sets up an individual RTL-SDR at the beginning of
- *				the program.
+ *                the program.
  */
 void rtlsdr_setup(void);
 

@@ -1,5 +1,5 @@
 /*
- * Initialization of System - Initialize peripherals and communication.
+ * control.c - Initialize peripherals and contol their operations.
  * Copyright (C) 2018 Adam Morris <morriada@mail.gvsu.edu>
  * Copyright (C) 2018 Nicholas Borchardt <borcharn@mail.gvsu.edu>
  *
@@ -53,6 +53,8 @@ void rtlsdr_setup(void)
 	for(i = 0; i < NUM_SDRS; ++i)
 	{
 		sdrs[i].id = i;
+		sdrs[i].blocksize = 96000;
+		sdrs[i].calibration = 1;
 		rtlsdr_dev_t *dev = sdrs[i].dev;
 		r = rtlsdr_open(&dev, sdrs[i].id);
 	  
@@ -60,18 +62,60 @@ void rtlsdr_setup(void)
   	rtlsdr_set_sample_rate(dev, sample_rate);
   	// Disable dithering
   	rtlsdr_set_dithering(dev, disable_dither);
-  	// Set the IF frequency
-  	rtlsdr_set_if_freq(dev, if_freq);
-  	// Set the center frequency
-  	rtlsdr_set_center_freq(dev, freq[i]);
   	// Set the tuner gain mode to automatic
   	rtlsdr_set_tuner_gain_mode(dev, auto_gain);
 	}
 }
 
+void rtlsdr_freq(int f)
+{
+	for(i = 0; i < NUM_SDRS; ++i)
+	{
+		rtlsdr_dev_t *dev = sdrs[i].dev;
+		r = rtlsdr_open(&dev, sdrs[i].id);
+
+		// Set the IF frequency
+		rtlsdr_set_if_freq(dev, if_freq);
+		// Set the center frequency
+		rtlsdr_set_center_freq(dev, freq[f]);
+	}
+}
+
 void file_save(int sdr_num)
 {
+	FILE *fp;
+	
+	// Current Time
+	char path[SIZE];
+	time_t curtime;
+	struct tm *loctime;
+  curtime = time(NULL);
+  loctime = localtime(&curtime);
+  int sec = loctime->tm_sec;
+  int min = loctime->tm_min;
+  int hr = loctime->tm_hour;
+  int day = loctime->tm_mday;
+  int mon = loctime->tm_mon;
+  int yr = loctime->tm_year;
+
 	// Save buffer to file for sdr_num
+	if(sdrs[sdr_num].calibration) {
+		sdrs[sdr_num].calibration = 0;
+		// Save buffer to Calibration file
+		snprintf(path, sizeof(char) * SIZE, "/home/adam/Documents/data/calibration%i_%i%i%i%i%i%i.dat",
+						sdr_num, yr, mon, day, hr, min, sec);
+		fp = fopen(path, "wb");
+		fwrite(sdrs[sdr_num].buffer, 1, sizeof(sdrs[sdr_num].buffer), fp);
+		fclose(fp);
+	} else {
+		sdrs[sdr_num].calibration = 1;
+		// Save buffer to Data file
+		snprintf(path, sizeof(char) * SIZE, "/home/adam/Documents/data/data%i_%i%i%i%i%i%i.dat",
+						sdr_num, yr, mon, day, hr, min, sec);
+		fp = fopen(path, "wb");
+		fwrite(sdrs[sdr_num].buffer, 1, sizeof(sdrs[sdr_num].buffer), fp);
+		fclose(fp);
+	}
 }
 
 void * collect_t(void *ptr)
@@ -104,13 +148,13 @@ void rtlsdr_calibration(void)
 		// Set the bias tee by setting the gpio bit 0 to bias_off
   	rtlsdr_set_bias_tee(dev, bias_noise);
   	// Set rtlsdr repeater for the i2communication via RTL2838
-  	rtlsdr_set_i2c_repeater(dev, i2c_repeater_on);
+  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_on);
   	// Set register to the output
-  	rtlsdr_i2c_write_reg(dev, i2c_addr, 0x03, 00);
+  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x03, 00);
   	// Set value to the register as described in the table
-  	rtlsdr_i2c_write_reg(dev, i2c_addr, 0x01, i2c_value);
+  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x01, i2c_value);
   	// Close the i2c_repeater
-  	rtlsdr_set_i2c_repeater(dev, i2c_repeater_off);
+  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_off);
   	// Reset the buffer
   	rtlsdr_reset_buffer(dev);
 	}
@@ -146,13 +190,13 @@ void rtlsdr_bias(void)
 		// Set the bias tee by setting the gpio bit 0 to bias_off
   	rtlsdr_set_bias_tee(dev, bias_data);
   	// Set rtlsdr repeater for the i2communication via RTL2838
-  	rtlsdr_set_i2c_repeater(dev, i2c_repeater_on);
+  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_on);
   	// Set register to the output
-  	rtlsdr_i2c_write_reg(dev, i2c_addr, 0x03, 00);
+  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x03, 00);
   	// Set value to the register as described in the table
-  	rtlsdr_i2c_write_reg(dev, i2c_addr, 0x01, i2c_value);
+  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x01, i2c_value);
   	// Close the i2c_repeater
-  	rtlsdr_set_i2c_repeater(dev, i2c_repeater_off);
+  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_off);
   	// Reset the buffer
   	rtlsdr_reset_buffer(dev);
 	}

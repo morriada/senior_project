@@ -23,7 +23,7 @@
 #include <string.h>
 
 // Include SDR Library
-#include <rtl-sdr.h>
+#include "rtl-sdr.h"
 
 // Include Project Libraries
 #include "control.h"
@@ -32,36 +32,44 @@
 // Include external functions
 extern void usage(void);
 extern void rtlsdr_setup(void);
+extern void rtlsdr_freq(int);
 extern void noise_collection(void);
 extern void rtlsdr_bias(void);
 extern void data_collection(void);
 
 int main(/*int argc, char** argv*/)
 {
+  // Declare variables
+  int n;
   // Setup RTL-SDRs
   rtlsdr_setup();
 
   while(1)
   {
-    // Prepare RTL-SDRs for Calibration
-    rtlsdr_calibration();
-    // Collect Data for Calibration
-    noise_collection();
-    // Switch RTL-SDRs Bias for Data Collection
-    rtlsdr_bias();
-    // Collect Accurate Data
-    data_collection();
-    // Find phase difference from Calibration Data
-    //function
-    // Find Peaks within each band
-    //function
-    // Correct for Phase Difference
-    //function
-    // Determine Direction of Arrival
-    //  with Phase Interferometry
-    //function
-    // Save data to files
-    //function
+    for(n = 0; n < 4; ++n)
+    {
+      // Set RTL-SDRs for desired frequency
+      rtlsdr_freq(n);
+      // Prepare RTL-SDRs for Calibration
+      rtlsdr_calibration();
+      // Collect Data for Calibration
+      noise_collection();
+      // Switch RTL-SDRs Bias for Data Collection
+      rtlsdr_bias();
+      // Collect Accurate Data
+      data_collection();
+      // Find phase difference from Calibration Data
+      //function
+      // Find Peaks within each band
+      //function
+      // Correct for Phase Difference
+      //function
+      // Determine Direction of Arrival
+      //  with Phase Interferometry
+      //function
+      // Save data to files
+      //function
+    }
   }
 
   return 0;

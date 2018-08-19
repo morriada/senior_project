@@ -53,7 +53,7 @@ void rtlsdr_setup(void)
 	for(i = 0; i < NUM_SDRS; ++i)
 	{
 		sdrs[i].id = i;
-		sdrs[i].blocksize = 96000;
+		sdrs[i].blocksize = BSIZE;
 		sdrs[i].calibration = 1;
 		rtlsdr_dev_t *dev = sdrs[i].dev;
 		r = rtlsdr_open(&dev, sdrs[i].id);
@@ -89,31 +89,35 @@ void file_save(int sdr_num)
 	char path[SIZE];
 	time_t curtime;
 	struct tm *loctime;
-  curtime = time(NULL);
-  loctime = localtime(&curtime);
-  int sec = loctime->tm_sec;
-  int min = loctime->tm_min;
-  int hr = loctime->tm_hour;
-  int day = loctime->tm_mday;
-  int mon = loctime->tm_mon;
-  int yr = loctime->tm_year;
+	curtime = time(NULL);
+	loctime = localtime(&curtime);
+	int sec = loctime->tm_sec;
+	int min = loctime->tm_min;
+  	int hr = loctime->tm_hour;
+  	int day = loctime->tm_mday;
+  	int mon = loctime->tm_mon;
+  	int yr = loctime->tm_year;
 
 	// Save buffer to file for sdr_num
 	if(sdrs[sdr_num].calibration) {
 		sdrs[sdr_num].calibration = 0;
 		// Save buffer to Calibration file
-		snprintf(path, sizeof(char) * SIZE, "/home/adam/Documents/data/calibration%i_%i%i%i%i%i%i.dat",
+		snprintf(path, sizeof(char) * SIZE, "/home/pi/data/calibration%i_%i%i%i%i%i%i.dat",
 						sdr_num, yr, mon, day, hr, min, sec);
-		fp = fopen(path, "wb");
-		fwrite(sdrs[sdr_num].buffer, 1, sizeof(sdrs[sdr_num].buffer), fp);
+		fp = fopen(path, "w");
+		int z;
+		for(z = 0; z < BSIZE; ++z)
+			fwrite(&sdrs[sdr_num].buffer[z], 1, 1, fp);
 		fclose(fp);
 	} else {
 		sdrs[sdr_num].calibration = 1;
 		// Save buffer to Data file
-		snprintf(path, sizeof(char) * SIZE, "/home/adam/Documents/data/data%i_%i%i%i%i%i%i.dat",
+		snprintf(path, sizeof(char) * SIZE, "/home/pi/data/data%i_%i%i%i%i%i%i.dat",
 						sdr_num, yr, mon, day, hr, min, sec);
-		fp = fopen(path, "wb");
-		fwrite(sdrs[sdr_num].buffer, 1, sizeof(sdrs[sdr_num].buffer), fp);
+		fp = fopen(path, "w");
+		int z;
+		for(z = 0; z < BSIZE; ++z)
+			fwrite(&sdrs[sdr_num].buffer[z], 1, 1, fp);
 		fclose(fp);
 	}
 }
@@ -136,6 +140,7 @@ void * collect_t(void *ptr)
 
 	file_save(*idx);
 
+	printf("End of thread %i\n", *idx);
 	return NULL;
 }
 
@@ -177,6 +182,8 @@ void noise_collection(void)
 		if(pthread_join(sdrs[i].collection_t, NULL)) {
 			fprintf(stderr, "Error joining thread\n");
 			exit(1);
+		} else {
+			printf("Thread %i joined\n", i);
 		}
 	}
 }

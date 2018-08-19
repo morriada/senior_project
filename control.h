@@ -33,6 +33,7 @@
 #include "rtl-sdr.h"
 
 // Define Macros
+#define BSIZE 96000
 #define NUM_SDRS 3
 #define SIZE 100
 
@@ -40,7 +41,7 @@
 typedef struct rtlsdr_struct {
 	int blocksize, calibration;
 	uint32_t id;
-	uint8_t *buffer;
+	unsigned char buffer[BSIZE];
 	rtlsdr_dev_t *dev;
 	pthread_t collection_t;
 } rtlsdr_struct;

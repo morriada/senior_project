@@ -122,26 +122,21 @@ void file_save(int sdr_num)
 	}
 }
 
-void * collect_t(void *ptr)
+void collect(int i)
 {
-	// Cast thread pointer
-	int * idx = (int *)ptr;
-	// Declare thread variables
 	int ret, blocksize, n_read;
 
+	// Collect data from all RTL-SDRs
 	ret = n_read = 0;
-	blocksize = sdrs[*idx].blocksize;
-	ret = rtlsdr_read_sync(sdrs[*idx].dev, sdrs[*idx].buffer, blocksize, &n_read);
+	blocksize = sdrs[i].blocksize;
+	ret = rtlsdr_read_sync(sdrs[i].dev, sdrs[i].buffer, blocksize, &n_read);
 	if(ret < 0) {
 		fprintf(stderr, "Runtime error: %d at %s:%d\n", ret, __FILE__, __LINE__);
 	} else if(n_read < blocksize) {
-		fprintf(stderr, "Short read %d: %d/%d\n", sdrs[*idx].id, n_read, blocksize);
+		fprintf(stderr, "Short read %d: %d/%d\n", sdrs[i].id, n_read, blocksize);
 	}
 
-	file_save(*idx);
-
-	printf("End of thread %i\n", *idx);
-	return NULL;
+	file_save(i);
 }
 
 void rtlsdr_calibration(void)
@@ -167,24 +162,11 @@ void rtlsdr_calibration(void)
 
 void noise_collection(void)
 {
-	// Create thread for each RTL-SDRs data collection
+	// Collect noise from all RTL-SDRs
 	for(i = 0; i < NUM_SDRS; ++i)
 	{
-		if(pthread_create(&(sdrs[i].collection_t), NULL, collect_t, &i)) {
-			fprintf(stderr, "Error creating thread\n");
-			exit(1);
-		}
-	}
-
-	// Wait until all threads have completed
-	for(i = 0; i < NUM_SDRS; ++i)
-	{
-		if(pthread_join(sdrs[i].collection_t, NULL)) {
-			fprintf(stderr, "Error joining thread\n");
-			exit(1);
-		} else {
-			printf("Thread %i joined\n", i);
-		}
+		collect(i);
+		sdrs[i].calibration = 0;
 	}
 }
 
@@ -211,21 +193,10 @@ void rtlsdr_bias(void)
 
 void data_collection(void)
 {
-	// Create thread for each RTL-SDRs data collection
+	// Collect data from all RTL-SDRs
 	for(i = 0; i < NUM_SDRS; ++i)
 	{
-		if(pthread_create(&(sdrs[i].collection_t), NULL, collect_t, &i)) {
-			fprintf(stderr, "Error creating thread\n");
-			exit(1);
-		}
-	}
-
-	// Wait until all threads have completed
-	for(i = 0; i < NUM_SDRS; ++i)
-	{
-		if(pthread_join(sdrs[i].collection_t, NULL)) {
-			fprintf(stderr, "Error joining thread\n");
-			exit(1);
-		}
+		collect(i);
+		sdrs[i].calibration = 1;
 	}
 }

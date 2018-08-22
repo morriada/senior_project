@@ -72,7 +72,6 @@ void rtlsdr_freq(int f)
 	for(i = 0; i < NUM_SDRS; ++i)
 	{
 		rtlsdr_dev_t *dev = sdrs[i].dev;
-		r = rtlsdr_open(&dev, sdrs[i].id);
 
 		// Set the IF frequency
 		rtlsdr_set_if_freq(dev, if_freq);
@@ -134,6 +133,8 @@ void collect(int i)
 		fprintf(stderr, "Runtime error: %d at %s:%d\n", ret, __FILE__, __LINE__);
 	} else if(n_read < blocksize) {
 		fprintf(stderr, "Short read %d: %d/%d\n", sdrs[i].id, n_read, blocksize);
+	} else {
+		fprintf(stderr, "Read %d\n", sdrs[i].id);
 	}
 
 	file_save(i);

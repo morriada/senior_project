@@ -52,18 +52,23 @@ void rtlsdr_setup(void)
 {
 	for(i = 0; i < NUM_SDRS; ++i)
 	{
+		// Initialize Variables
 		sdrs[i].id = i;
 		sdrs[i].blocksize = BSIZE;
 		sdrs[i].calibration = 1;
+		// Open RTL-SDR device
 		rtlsdr_dev_t *dev = sdrs[i].dev;
 		r = rtlsdr_open(&dev, sdrs[i].id);
 	  
-  	// Set the sample rate of the rtl-sdr
-  	rtlsdr_set_sample_rate(dev, sample_rate);
-  	// Disable dithering
-  	rtlsdr_set_dithering(dev, disable_dither);
-  	// Set the tuner gain mode to automatic
-  	rtlsdr_set_tuner_gain_mode(dev, auto_gain);
+  		// Set the sample rate of the rtl-sdr
+  		rtlsdr_set_sample_rate(dev, sample_rate);
+  		// Disable dithering
+  		rtlsdr_set_dithering(dev, disable_dither);
+  		// Set the tuner gain mode to automatic
+  		rtlsdr_set_tuner_gain_mode(dev, auto_gain);
+
+  		// Close RTL-SDR device
+  		rtlsdr_close(dev);
 	}
 }
 
@@ -71,12 +76,17 @@ void rtlsdr_freq(int f)
 {
 	for(i = 0; i < NUM_SDRS; ++i)
 	{
+		// Open RTL-SDR device
 		rtlsdr_dev_t *dev = sdrs[i].dev;
+		r = rtlsdr_open(&dev, sdrs[i].id);
 
 		// Set the IF frequency
 		rtlsdr_set_if_freq(dev, if_freq);
 		// Set the center frequency
 		rtlsdr_set_center_freq(dev, freq[f]);
+
+		// Close RTL-SDR device
+		rtlsdr_close(dev);
 	}
 }
 
@@ -101,20 +111,22 @@ void file_save(int sdr_num)
 	if(sdrs[sdr_num].calibration) {
 		sdrs[sdr_num].calibration = 0;
 		// Save buffer to Calibration file
-		snprintf(path, sizeof(char) * SIZE, "/home/pi/data/calibration%i_%i%i%i%i%i%i.dat",
+		snprintf(path, sizeof(char) * SIZE, "/home/adam/Documents/data/calibration%i_%i%i%i%i%i%i.dat",
 						sdr_num, yr, mon, day, hr, min, sec);
 		fp = fopen(path, "w");
 		int z;
+		// Write to file byte by byte
 		for(z = 0; z < BSIZE; ++z)
 			fwrite(&sdrs[sdr_num].buffer[z], 1, 1, fp);
 		fclose(fp);
 	} else {
 		sdrs[sdr_num].calibration = 1;
 		// Save buffer to Data file
-		snprintf(path, sizeof(char) * SIZE, "/home/pi/data/data%i_%i%i%i%i%i%i.dat",
+		snprintf(path, sizeof(char) * SIZE, "/home/adam/Documents/data/data%i_%i%i%i%i%i%i.dat",
 						sdr_num, yr, mon, day, hr, min, sec);
 		fp = fopen(path, "w");
 		int z;
+		// Write to file byte by byte
 		for(z = 0; z < BSIZE; ++z)
 			fwrite(&sdrs[sdr_num].buffer[z], 1, 1, fp);
 		fclose(fp);
@@ -123,12 +135,18 @@ void file_save(int sdr_num)
 
 void collect(int i)
 {
+	// Initialize collection variables
 	int ret, blocksize, n_read;
+	// Open RTL-SDR device
+	rtlsdr_dev_t *dev = sdrs[i].dev;
+	r = rtlsdr_open(&dev, sdrs[i].id);
 
 	// Collect data from all RTL-SDRs
 	ret = n_read = 0;
 	blocksize = sdrs[i].blocksize;
-	ret = rtlsdr_read_sync(sdrs[i].dev, sdrs[i].buffer, blocksize, &n_read);
+	ret = rtlsdr_read_sync(dev, sdrs[i].buffer, blocksize, &n_read);
+
+	// Check for errors
 	if(ret < 0) {
 		fprintf(stderr, "Runtime error: %d at %s:%d\n", ret, __FILE__, __LINE__);
 	} else if(n_read < blocksize) {
@@ -137,6 +155,10 @@ void collect(int i)
 		fprintf(stderr, "Read %d\n", sdrs[i].id);
 	}
 
+	// Close RTL-SDR device
+	rtlsdr_close(dev);
+
+	// Save data to file
 	file_save(i);
 }
 
@@ -144,20 +166,25 @@ void rtlsdr_calibration(void)
 {
 	for(i = 0; i < NUM_SDRS; ++i)
 	{
+		// Open RTL-SDR device
 		rtlsdr_dev_t *dev = sdrs[i].dev;
+		r = rtlsdr_open(&dev, sdrs[i].id);
 
 		// Set the bias tee by setting the gpio bit 0 to bias_off
-  	rtlsdr_set_bias_tee(dev, bias_noise);
-  	// Set rtlsdr repeater for the i2communication via RTL2838
-  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_on);
-  	// Set register to the output
-  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x03, 00);
-  	// Set value to the register as described in the table
-  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x01, i2c_value);
-  	// Close the i2c_repeater
-  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_off);
-  	// Reset the buffer
-  	rtlsdr_reset_buffer(dev);
+	  	rtlsdr_set_bias_tee(dev, bias_noise);
+	  	// Set rtlsdr repeater for the i2communication via RTL2838
+	  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_on);
+	  	// Set register to the output
+	  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x03, 00);
+	  	// Set value to the register as described in the table
+	  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x01, i2c_value);
+	  	// Close the i2c_repeater
+	  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_off);
+	  	// Reset the buffer
+	  	rtlsdr_reset_buffer(dev);
+
+	  	// Close RTL-SDR device
+	  	rtlsdr_close(dev);
 	}
 }
 
@@ -175,20 +202,25 @@ void rtlsdr_bias(void)
 {
 	for(i = 0; i < NUM_SDRS; ++i)
 	{
+		// Open RTL-SDR device
 		rtlsdr_dev_t *dev = sdrs[i].dev;
+		r = rtlsdr_open(&dev, sdrs[i].id);
 
 		// Set the bias tee by setting the gpio bit 0 to bias_off
-  	rtlsdr_set_bias_tee(dev, bias_data);
-  	// Set rtlsdr repeater for the i2communication via RTL2838
-  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_on);
-  	// Set register to the output
-  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x03, 00);
-  	// Set value to the register as described in the table
-  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x01, i2c_value);
-  	// Close the i2c_repeater
-  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_off);
-  	// Reset the buffer
-  	rtlsdr_reset_buffer(dev);
+	  	rtlsdr_set_bias_tee(dev, bias_data);
+	  	// Set rtlsdr repeater for the i2communication via RTL2838
+	  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_on);
+	  	// Set register to the output
+	  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x03, 00);
+	  	// Set value to the register as described in the table
+	  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x01, i2c_value);
+	  	// Close the i2c_repeater
+	  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_off);
+	  	// Reset the buffer
+	  	rtlsdr_reset_buffer(dev);
+
+	  	// Close RTL-SDR device
+	  	rtlsdr_close(dev);
 	}
 }
 

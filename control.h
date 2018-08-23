@@ -53,29 +53,34 @@ struct rtlsdr_struct sdrs[3];
 void usage(void);
 
 /*
+ * sdrs_setup - Initializes the structures for each RTL-SDR.
+ */
+void sdrs_setup(void);
+
+/*
  * rtlsdr_setup - Sets up an individual RTL-SDR at the beginning of
  *                the program.
  */
-void rtlsdr_setup(void);
+void rtlsdr_setup(rtlsdr_struct *sdr, int f);
 
 /*
  *
  */
-void rtlsdr_calibration(void);
+void rtlsdr_calibration(rtlsdr_struct *sdr, int f);
 
 /*
  *
  */
-void noise_collection(void);
+void noise_collection(rtlsdr_struct *sdr, int f);
 
 /*
  *
  */
-void rtlsdr_bias(void);
+void rtlsdr_bias(rtlsdr_struct *sdr, int f);
 
 /*
  *
  */
-void data_collection(void);
+void data_collection(rtlsdr_struct *sdr, int f);
 
 #endif // SENIOR_PROJECT_CONTROL_H

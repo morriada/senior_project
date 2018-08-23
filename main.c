@@ -31,44 +31,43 @@
 
 // Include external functions
 extern void usage(void);
-extern void rtlsdr_setup(void);
-extern void rtlsdr_freq(int);
-extern void noise_collection(void);
-extern void rtlsdr_bias(void);
-extern void data_collection(void);
+extern void sdrs_setup(void);
+extern void rtlsdr_setup(rtlsdr_struct *, int);
+extern void rtlsdr_freq(rtlsdr_struct *, int);
+extern void noise_collection(rtlsdr_struct *, int);
+extern void rtlsdr_bias(rtlsdr_struct *, int);
+extern void data_collection(rtlsdr_struct *, int);
 
 int main(/*int argc, char** argv*/)
 {
   // Declare variables
-  int n;
-  // Setup RTL-SDRs
-  rtlsdr_setup();
+  int i, n;
+  // Prepare structures
+  sdrs_setup();
 
   while(1)
   {
     for(n = 0; n < 4; ++n)
     {
-      // Set RTL-SDRs for desired frequency
-      rtlsdr_freq(n);
-      // Prepare RTL-SDRs for Calibration
-      rtlsdr_calibration();
-      // Collect Data for Calibration
-      noise_collection();
-      // Switch RTL-SDRs Bias for Data Collection
-      rtlsdr_bias();
-      // Collect Accurate Data
-      data_collection();
-      // Find phase difference from Calibration Data
-      //function
-      // Find Peaks within each band
-      //function
-      // Correct for Phase Difference
-      //function
-      // Determine Direction of Arrival
-      //  with Phase Interferometry
-      //function
-      // Save data to files
-      //function
+      for(i = 0; i < NUM_SDRS; ++i)
+      {
+        // Open RTL-SDR device
+        rtlsdr_open(&(sdrs[i].dev), sdrs[i].id);
+        // Setup RTL-SDRs
+        rtlsdr_setup(&sdrs[i], n);
+        // Set RTL-SDRs for desired frequency
+        rtlsdr_freq(&sdrs[i], n);
+        // Prepare RTL-SDRs for Calibration
+        rtlsdr_calibration(&sdrs[i], n);
+        // Collect Data for Calibration
+        noise_collection(&sdrs[i], n);
+        // Switch RTL-SDRs Bias for Data Collection
+        rtlsdr_bias(&sdrs[i], n);
+        // Collect Accurate Data
+        data_collection(&sdrs[i], n);
+        // Close RTL-SDR device
+        rtlsdr_close(sdrs[i].dev);
+      }
     }
   }
 

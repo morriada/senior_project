@@ -140,7 +140,7 @@ void collect(rtlsdr_struct *sdr, int f)
 	}
 
 	// Save data to file
-	file_save(i);
+	file_save(sdr->id);
 }
 
 void rtlsdr_calibration(rtlsdr_struct *sdr, int f)

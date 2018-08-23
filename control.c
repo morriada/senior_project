@@ -33,10 +33,9 @@ int auto_gain = 0;
 int disable_dither = 0;
 int i2c_repeater_on = 1;
 int i2c_repeater_off = 0;
-uint32_t i2c_addr = 0;
+uint8_t i2c_addr = 0x40;
 uint8_t bias_data = 0;
 uint8_t bias_noise = 1;
-uint8_t i2c_value = 0;
 uint32_t sample_rate = 2400000;
 uint32_t if_freq = 0;
 
@@ -57,6 +56,9 @@ void sdrs_setup(void )
 		sdrs[i].blocksize = BSIZE;
 		sdrs[i].calibration = 1;
 	}
+	super.id = NUM_SDRS;
+	super.blocksize = 0;
+	super.calibration = -1;
 }
 
 void rtlsdr_setup(rtlsdr_struct *sdr, int f)
@@ -145,18 +147,22 @@ void collect(rtlsdr_struct *sdr, int f)
 
 void rtlsdr_calibration(rtlsdr_struct *sdr, int f)
 {
+	// Open Supervisory SDR
+	rtlsdr_open(&(super.dev), super.id);
 	// Set the bias tee by setting the gpio bit 0 to bias_off
-  	rtlsdr_set_bias_tee(sdr->dev, bias_noise);
+  	rtlsdr_set_bias_tee(super.dev, bias_noise);
   	// Set rtlsdr repeater for the i2communication via RTL2838
-  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_on);
+  	rtlsdr_set_i2c_repeater(super.dev, i2c_repeater_on);
   	// Set register to the output
-  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x03, 00);
+  	rtlsdr_i2c_write_reg(super.dev, i2c_addr, 0x03, 0);
   	// Set value to the register as described in the table
-  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x01, i2c_value);
+  	rtlsdr_i2c_write_reg(super.dev, i2c_addr, 0x01, 1);
   	// Close the i2c_repeater
-  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_off);
+  	rtlsdr_set_i2c_repeater(super.dev, i2c_repeater_off);
   	// Reset the buffer
-  	rtlsdr_reset_buffer(sdr->dev);
+  	rtlsdr_reset_buffer(super.dev);
+	// Close Supervisory SDR
+	rtlsdr_close(super.dev);
 }
 
 void noise_collection(rtlsdr_struct *sdr, int f)
@@ -168,17 +174,17 @@ void noise_collection(rtlsdr_struct *sdr, int f)
 void rtlsdr_bias(rtlsdr_struct *sdr, int f)
 {
 	// Set the bias tee by setting the gpio bit 0 to bias_off
-  	rtlsdr_set_bias_tee(sdr->dev, bias_data);
+  	rtlsdr_set_bias_tee(super.dev, bias_data);
   	// Set rtlsdr repeater for the i2communication via RTL2838
-  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_on);
+  	rtlsdr_set_i2c_repeater(super.dev, i2c_repeater_on);
   	// Set register to the output
-  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x03, 00);
+  	rtlsdr_i2c_write_reg(super.dev, i2c_addr, 0x03, 0);
   	// Set value to the register as described in the table
-  	//rtlsdr_i2c_write_reg(dev, i2c_addr, 0x01, i2c_value);
+  	rtlsdr_i2c_write_reg(super.dev, i2c_addr, 0x01, 1);
   	// Close the i2c_repeater
-  	//rtlsdr_set_i2c_repeater(dev, i2c_repeater_off);
+  	rtlsdr_set_i2c_repeater(super.dev, i2c_repeater_off);
   	// Reset the buffer
-  	rtlsdr_reset_buffer(sdr->dev);
+  	rtlsdr_reset_buffer(super.dev);
 }
 
 void data_collection(rtlsdr_struct *sdr, int f)

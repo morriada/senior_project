@@ -45,6 +45,7 @@ typedef struct rtlsdr_struct {
 	rtlsdr_dev_t *dev;
 	pthread_t collection_t;
 } rtlsdr_struct;
+struct rtlsdr_struct super;
 struct rtlsdr_struct sdrs[3];
 
 /*

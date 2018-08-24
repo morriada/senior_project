@@ -30,7 +30,6 @@
 //#include "data_processing.h"
 
 // Include external functions
-extern void usage(void);
 extern void sdrs_setup(void);
 extern void rtlsdr_setup(int);
 extern void rtlsdr_freq(int, int);
@@ -59,7 +58,7 @@ void * collect_t(void * ptr)
   // Close RTL-SDR device
   rtlsdr_close(sdrs[ts->id].dev);
 
-  return NULL;
+  pthread_exit(NULL);
 }
 
 // Supervisory SDR Thread
@@ -68,17 +67,21 @@ void * super_t(void * ptr)
   int i;
   int * n = (int *)ptr;
 
+  // Open Supervisory Channel
+  rtlsdr_open(&(super.dev), super.id);
   // Set RTL-SDRs Bias for Noise Collection
   rtlsdr_bias(0x1f);
+
+  struct thread_struct tmp[3];
 
   // Create a collection thread for each RTL-SDR  
   for(i = 0; i < NUM_SDRS; ++i)
   {
-    struct thread_struct * ts;
-    ts->id = i;
-    ts->freq = *n;
-    if(pthread_create(&(sdrs[i].collection_t), NULL, collect_t, &ts)) {
-      fprintf(stderr, "Error creating thread\n");
+    tmp[i].id = i;
+    tmp[i].freq = *n;
+    struct thread_struct * ts = &tmp[i];
+    if(pthread_create(&(sdrs[i].collection_t), NULL, collect_t, (void *)ts)) {
+      //fprintf(stderr, "Error creating thread\n");
       exit(1);
     }
   }
@@ -87,19 +90,21 @@ void * super_t(void * ptr)
   sleep(0.1);
   // Switch RTL-SDRs Bias for Data Collection
   rtlsdr_bias(0x00);
+  // Close Supervisory Channel
+  rtlsdr_close(super.dev);
 
   // Wait for each collection thread to join
   for(i = 0; i < NUM_SDRS; ++i)
   {
     if(pthread_join(sdrs[i].collection_t, NULL)) {
-      fprintf(stderr, "Error joining thread\n");
+      //fprintf(stderr, "Error joining thread\n");
       exit(1);
     }
   }
 
   // Create a DSP thread
   
-  return NULL;
+  pthread_exit(NULL);
 }
 
 
@@ -115,13 +120,13 @@ int main(void)
   {
     for(n = 0; n < 4; ++n)
     {
-      if(pthread_create(&(super.collection_t), NULL, super_t, &n)) {
-        fprintf(stderr, "Error creating thread\n");
+      if(pthread_create(&(super.collection_t), NULL, super_t, (void *)&n)) {
+        //fprintf(stderr, "Error creating thread\n");
         exit(1);
       }
 
       if(pthread_join(super.collection_t, NULL)) {
-        fprintf(stderr, "Error joining thread\n");
+        //fprintf(stderr, "Error joining thread\n");
         exit(1);
       }
     }

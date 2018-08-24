@@ -37,7 +37,7 @@ uint8_t i2c_addr = 0x40;
 uint8_t bias_data = 0;
 uint8_t bias_noise = 1;
 uint32_t sample_rate = 2400000;
-uint32_t if_freq = 0;
+uint32_t if_freq = 7200000;
 
 void sdrs_setup(void)
 {
@@ -47,6 +47,7 @@ void sdrs_setup(void)
 		sdrs[i].id = i;
 		sdrs[i].blocksize = BSIZE;
 		sdrs[i].calibration = 1;
+		sdrs[i].collection_t = (pthread_t)malloc(sizeof(pthread_t));
 	}
 	super.id = NUM_SDRS;
 	super.blocksize = 0;
@@ -134,7 +135,7 @@ void collect(int id)
 	}
 
 	// Save data to file
-	file_save(id);
+//	file_save(id);
 }
 
 void rtlsdr_bias(uint8_t i2c_val)

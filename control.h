@@ -33,15 +33,17 @@
 #include "rtl-sdr.h"
 
 // Define Macros
-#define BSIZE 5280000
+#define BSIZE 10560000
 #define NUM_SDRS 3
 #define SIZE 100
 
 // Declare variables and structures
+static pthread_mutex_t lock, file;
+
 typedef struct rtlsdr_struct {
 	int blocksize, calibration;
 	uint32_t id;
-	unsigned char buffer[BSIZE];
+	uint8_t *buffer;
 	rtlsdr_dev_t *dev;
 	pthread_t collection_t;
 } rtlsdr_struct;
@@ -67,11 +69,11 @@ void rtlsdr_setup(int id);
 /*
  *
  */
-void rtlsdr_bias(uint8_t i2c_val);
+void collect(int id);
 
 /*
  *
  */
-void data_collection(int id);
+void rtlsdr_bias(uint8_t i2c_val);
 
 #endif // SENIOR_PROJECT_CONTROL_H

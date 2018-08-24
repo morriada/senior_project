@@ -18,6 +18,7 @@
  */
 
 // Include Standard Libraries
+//#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,7 +35,11 @@ extern void sdrs_setup(void);
 extern void rtlsdr_setup(int);
 extern void rtlsdr_freq(int, int);
 extern void rtlsdr_bias(uint8_t);
-extern void data_collection(int);
+extern void collect(int);
+
+// Initialize variables
+extern pthread_mutex_t lock;
+extern pthread_mutex_t file;
 
 // DSP Thread
 void dodsp(void * ptr)
@@ -46,6 +51,7 @@ void dodsp(void * ptr)
 void * collect_t(void * ptr)
 {
   struct thread_struct * ts = (struct thread_struct *)ptr;
+  int r;
 
   // Open RTL-SDR device
   rtlsdr_open(&(sdrs[ts->id].dev), sdrs[ts->id].id);
@@ -53,8 +59,11 @@ void * collect_t(void * ptr)
   rtlsdr_setup(ts->id);
   // Set RTL-SDRs for desired frequency
   rtlsdr_freq(ts->id, ts->freq);
+  // Reset Buffer
+  if((r = rtlsdr_reset_buffer(sdrs[ts->id].dev)) < 0)
+    printf("WARNING: [%d] Failed to reset buffer.\n", r);
   // Collect Data
-  data_collection(ts->id);
+  collect(ts->id);
   // Close RTL-SDR device
   rtlsdr_close(sdrs[ts->id].dev);
 
@@ -85,7 +94,8 @@ void * super_t(void * ptr)
       exit(1);
     }
   }
-  
+
+//  while(flag0 && flag1 && flag2);
   // Sleep for 100 milliseconds
   sleep(0.1);
   // Switch RTL-SDRs Bias for Data Collection
@@ -115,6 +125,12 @@ int main(void)
   int n;
   // Prepare structures
   sdrs_setup();
+  // Initialize mutex
+  if(pthread_mutex_init(&lock, NULL) || pthread_mutex_init(&file, NULL))
+  {
+    printf("\n mutex init has failed\n");
+    return 1;
+  }
 
   while(1)
   {
@@ -131,6 +147,10 @@ int main(void)
       }
     }
   }
+
+  // Destroy mutex
+  pthread_mutex_destroy(&lock);
+  pthread_mutex_destroy(&file);
 
   return 0;
 }

@@ -33,7 +33,7 @@
 #include "rtl-sdr.h"
 
 // Define Macros
-#define BSIZE 96000
+#define BSIZE 5280000
 #define NUM_SDRS 3
 #define SIZE 100
 
@@ -48,10 +48,10 @@ typedef struct rtlsdr_struct {
 struct rtlsdr_struct super;
 struct rtlsdr_struct sdrs[3];
 
-/*
- * usage - Prints usage description of program
- */
-void usage(void);
+typedef struct thread_struct {
+	int id;
+	int freq;
+} thread_struct;
 
 /*
  * sdrs_setup - Initializes the structures for each RTL-SDR.
@@ -62,26 +62,16 @@ void sdrs_setup(void);
  * rtlsdr_setup - Sets up an individual RTL-SDR at the beginning of
  *                the program.
  */
-void rtlsdr_setup(rtlsdr_struct *sdr, int f);
+void rtlsdr_setup(int id);
 
 /*
  *
  */
-void rtlsdr_calibration(rtlsdr_struct *sdr, int f);
+void rtlsdr_bias(uint8_t i2c_val);
 
 /*
  *
  */
-void noise_collection(rtlsdr_struct *sdr, int f);
-
-/*
- *
- */
-void rtlsdr_bias(rtlsdr_struct *sdr, int f);
-
-/*
- *
- */
-void data_collection(rtlsdr_struct *sdr, int f);
+void data_collection(int id);
 
 #endif // SENIOR_PROJECT_CONTROL_H

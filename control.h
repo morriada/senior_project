@@ -61,19 +61,23 @@ typedef struct thread_struct {
 void sdrs_setup(void);
 
 /*
- * rtlsdr_setup - Sets up an individual RTL-SDR at the beginning of
- *                the program.
+ * rtlsdr_setup - Sets up an individual RTL-SDR at the beginning of the program.
+ * @param id ID of RTL-SDR - expecting an integer from 0 to NUM_SDRS
  */
 void rtlsdr_setup(int id);
 
 /*
- *
- */
-void collect(int id, int f);
-
-/*
- *
+ * rtlsdr_bias - Sets bias of Supervisory RTL-SDR for data collection from the
+ * 							noise card or from the antenna's.
+ * @param i2c_val 2 byte value for register on RTL-SDR
  */
 void rtlsdr_bias(uint8_t i2c_val);
+
+/*
+ * collect - Colects the data as set up from the rtlsdr_setup function.
+ * @param id ID of RTL-SDR - expecting an integer from 0 to NUM_SDRS
+ * @param f frequency id - expecting an integer from 0 to 3
+ */
+void collect(int id, int f);
 
 #endif // SENIOR_PROJECT_CONTROL_H

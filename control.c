@@ -99,7 +99,7 @@ void file_save(int sdr_num, int f)
 	snprintf(path, sizeof(char) * SIZE, "/home/pi/data/sdr%i_freq%i_%i%i%i%i%i%i.dat",
 					sdr_num, freq[f], yr, mon, day, hr, min, sec);
 	pthread_mutex_lock(&file);
-	fp = fopen(path, "w");
+	fp = fopen(path, "wb");
 	fwrite(sdrs[sdr_num].buffer, 1, BSIZE, fp);
 	fclose(fp);
 	pthread_mutex_unlock(&file);

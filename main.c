@@ -35,7 +35,7 @@ extern void sdrs_setup(void);
 extern void rtlsdr_setup(int);
 extern void rtlsdr_freq(int, int);
 extern void rtlsdr_bias(uint8_t);
-extern void collect(int);
+extern void collect(int, int);
 
 // Initialize variables
 extern pthread_mutex_t lock;
@@ -63,7 +63,7 @@ void * collect_t(void * ptr)
   if((r = rtlsdr_reset_buffer(sdrs[ts->id].dev)) < 0)
     printf("WARNING: [%d] Failed to reset buffer.\n", r);
   // Collect Data
-  collect(ts->id);
+  collect(ts->id, ts->freq);
   // Close RTL-SDR device
   rtlsdr_close(sdrs[ts->id].dev);
 
@@ -83,7 +83,7 @@ void * super_t(void * ptr)
 
   struct thread_struct tmp[3];
 
-  // Create a collection thread for each RTL-SDR  
+  // Create a collection thread for each RTL-SDR
   for(i = 0; i < NUM_SDRS; ++i)
   {
     tmp[i].id = i;
@@ -113,7 +113,7 @@ void * super_t(void * ptr)
   }
 
   // Create a DSP thread
-  
+
   pthread_exit(NULL);
 }
 

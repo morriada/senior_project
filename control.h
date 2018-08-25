@@ -41,7 +41,7 @@
 static pthread_mutex_t lock, file;
 
 typedef struct rtlsdr_struct {
-	int blocksize, calibration;
+	int blocksize;
 	uint32_t id;
 	uint8_t *buffer;
 	rtlsdr_dev_t *dev;
@@ -69,7 +69,7 @@ void rtlsdr_setup(int id);
 /*
  *
  */
-void collect(int id);
+void collect(int id, int f);
 
 /*
  *

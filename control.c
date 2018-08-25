@@ -21,7 +21,7 @@
 #include "control.h"
 
 // Declare variables
-static volatile uint32_t freq[] = { 
+static volatile uint32_t freq[] = {
 	148500000,
 	149500000,
 	150500000,
@@ -47,12 +47,10 @@ void sdrs_setup(void)
 		sdrs[i].id = i;
 		sdrs[i].blocksize = BSIZE;
 		sdrs[i].buffer = calloc(BSIZE, sizeof(uint8_t));
-		sdrs[i].calibration = 1;
 		sdrs[i].collection_t = (pthread_t)malloc(sizeof(pthread_t));
 	}
 	super.id = NUM_SDRS;
 	super.blocksize = 0;
-	super.calibration = -1;
 }
 
 void rtlsdr_setup(int id)
@@ -80,10 +78,10 @@ void rtlsdr_freq(int id, int f)
 		printf("WARNING: [%d] Failed to set center frequency.\n", r);
 }
 
-void file_save(int sdr_num)
+void file_save(int sdr_num, int f)
 {
 	FILE *fp;
-	
+
 	// Current Time
 	char path[SIZE];
 	time_t curtime;
@@ -92,36 +90,22 @@ void file_save(int sdr_num)
 	loctime = localtime(&curtime);
 	int sec = loctime->tm_sec;
 	int min = loctime->tm_min;
-  	int hr = loctime->tm_hour;
-  	int day = loctime->tm_mday;
-  	int mon = loctime->tm_mon;
-  	int yr = loctime->tm_year;
+	int hr = loctime->tm_hour;
+	int day = loctime->tm_mday;
+	int mon = loctime->tm_mon;
+	int yr = loctime->tm_year;
 
-	// Save buffer to file for sdr_num
-	if(sdrs[sdr_num].calibration) {
-		sdrs[sdr_num].calibration = 0;
-		// Save buffer to Calibration file
-		snprintf(path, sizeof(char) * SIZE, "/home/pi/data/calibration%i_%i%i%i%i%i%i.dat",
-						sdr_num, yr, mon, day, hr, min, sec);
-		pthread_mutex_lock(&file);
-		fp = fopen(path, "w");
-		fwrite(sdrs[sdr_num].buffer, 1, BSIZE, fp);
-		fclose(fp);
-		pthread_mutex_unlock(&file);
-	} else {
-		sdrs[sdr_num].calibration = 1;
-		// Save buffer to Data file
-		snprintf(path, sizeof(char) * SIZE, "/home/pi/data/data%i_%i%i%i%i%i%i.dat",
-						sdr_num, yr, mon, day, hr, min, sec);
-		pthread_mutex_lock(&file);
-		fp = fopen(path, "w");
-		fwrite(sdrs[sdr_num].buffer, 1, BSIZE, fp);
-		fclose(fp);
-		pthread_mutex_unlock(&file);
-	}
+	// Save buffer to file for sdr_num and frequency
+	snprintf(path, sizeof(char) * SIZE, "/home/pi/data/sdr%i_freq%i_%i%i%i%i%i%i.dat",
+					sdr_num, freq[f], yr, mon, day, hr, min, sec);
+	pthread_mutex_lock(&file);
+	fp = fopen(path, "w");
+	fwrite(sdrs[sdr_num].buffer, 1, BSIZE, fp);
+	fclose(fp);
+	pthread_mutex_unlock(&file);
 }
 
-void collect(int id)
+void collect(int id, int f)
 {
 	// Initialize collection variables
 	int ret, blocksize, n_read;
@@ -144,7 +128,7 @@ void collect(int id)
 	}
 
 	// Save data to file
-	file_save(id);
+	file_save(id, f);
 }
 
 void rtlsdr_bias(uint8_t i2c_val)

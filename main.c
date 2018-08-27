@@ -61,8 +61,12 @@ void * collect_t(void * ptr)
   // Reset Buffer
   if((r = rtlsdr_reset_buffer(sdrs[ts->id].dev)) < 0)
     printf("WARNING: [%d] Failed to reset buffer.\n", r);
+  // Sets flag to 0
+  set_flag(ts->id);
   // Collect Data
   collect(ts->id, ts->freq);
+  // Reset flag to 1
+  reset_flag(ts->id);
   // Close RTL-SDR device
   rtlsdr_close(sdrs[ts->id].dev);
 
@@ -94,7 +98,10 @@ void * super_t(void * ptr)
     }
   }
 
-//  while(flag0 && flag1 && flag2);
+  // Wait for SDRs
+  pthread_mutex_lock(&t);
+  while(flag0 || flag1 || flag2);
+  pthread_mutex_unlock(&t);
   // Sleep for 100 milliseconds
   sleep(0.1);
   // Switch RTL-SDRs Bias for Data Collection
@@ -125,7 +132,8 @@ int main(void)
   // Prepare structures
   sdrs_setup();
   // Initialize mutex
-  if(pthread_mutex_init(&lock, NULL) || pthread_mutex_init(&file, NULL))
+  if(pthread_mutex_init(&lock, NULL) || pthread_mutex_init(&file, NULL)
+    || pthread_mutex_init(&t, NULL))
   {
     printf("\n mutex init has failed\n");
     return 1;
@@ -150,6 +158,7 @@ int main(void)
   // Destroy mutex
   pthread_mutex_destroy(&lock);
   pthread_mutex_destroy(&file);
+  pthread_mutex_destroy(&t);
 
   return 0;
 }

@@ -38,7 +38,8 @@
 #define SIZE 100
 
 // Declare variables and structures
-static pthread_mutex_t lock, file;
+static pthread_mutex_t lock, file, t;
+static volatile int flag0 = 1, flag1 = 1, flag2 = 1;
 
 typedef struct rtlsdr_struct {
 	int blocksize;
@@ -79,5 +80,17 @@ void rtlsdr_bias(uint8_t i2c_val);
  * @param f frequency id - expecting an integer from 0 to 3
  */
 void collect(int id, int f);
+
+/*
+ * set_flag - Sets flag for thread to 0 to continue execution.
+ * @param id ID of RTL-SDR - expecting a integer from 0 to NUM_SDRS
+ */
+void set_flag(int id);
+
+/*
+ * reset_flag - Resets flag for thread to 1 so execution doesn't continue.
+ * @param id ID of RTL-SDR - expecting a integer from 0 to NUM_SDRS
+ */
+void reset_flag(int id);
 
 #endif // SENIOR_PROJECT_CONTROL_H

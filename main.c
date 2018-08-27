@@ -63,6 +63,8 @@ void * collect_t(void * ptr)
   // Reset Buffer
   if((r = rtlsdr_reset_buffer(sdrs[ts->id].dev)) < 0)
     printf("WARNING: [%d] Failed to reset buffer.\n", r);
+  //Sets bias
+  rtlsdr_set_bias_tee(sdrs[ts->id].dev, 1);
   // Sets flag to 0
   set_flag(ts->id);
   // Collect Data

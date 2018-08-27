@@ -166,7 +166,7 @@ void set_flag(int id)
 	pthread_mutex_unlock(&t);
 }
 
-void set_flag(int id)
+void reset_flag(int id)
 {
 	pthread_mutex_lock(&t);
 	if(id == 0) {

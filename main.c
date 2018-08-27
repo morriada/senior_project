@@ -35,6 +35,8 @@ extern void rtlsdr_setup(int);
 extern void rtlsdr_freq(int, int);
 extern void rtlsdr_bias(uint8_t);
 extern void collect(int, int);
+extern void set_flag(int);
+extern void reset_flag(int);
 
 // Initialize variables
 extern pthread_mutex_t lock;

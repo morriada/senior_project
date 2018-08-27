@@ -165,3 +165,18 @@ void set_flag(int id)
 	}
 	pthread_mutex_unlock(&t);
 }
+
+void set_flag(int id)
+{
+	pthread_mutex_lock(&t);
+	if(id == 0) {
+		flag0 = 1;
+	} else if(id == 1) {
+		flag1 = 1;
+	} else if(id == 2) {
+		flag2 = 1;
+	} else {
+		fprintf(stderr, "ERROR: [%d] id not specified at %s:%d", id, __FILE__, __LINE__);
+	}
+	pthread_mutex_unlock(&t);
+}

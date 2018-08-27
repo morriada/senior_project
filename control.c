@@ -34,8 +34,6 @@ int disable_dither = 0;
 int i2c_repeater_on = 1;
 int i2c_repeater_off = 0;
 uint32_t i2c_addr = 0x40;
-uint8_t bias_data = 0;
-uint8_t bias_noise = 1;
 uint32_t sample_rate = 2400000;
 uint32_t if_freq = 7200000;
 
@@ -135,7 +133,7 @@ void rtlsdr_bias(uint8_t i2c_val)
 {
 	int r;
 	// Set the bias tee by setting the gpio bit 0 to bias_off
-  	if((r = rtlsdr_set_bias_tee(super.dev, bias_data)) < 0)
+  	if((r = rtlsdr_set_bias_tee(super.dev, 1)) < 0)
 		printf("WARNING: [%d] Failed to set bias tee.\n", r);
   	// Set rtlsdr repeater for the i2communication via RTL2838
   	rtlsdr_set_i2c_repeater(super.dev, i2c_repeater_on);

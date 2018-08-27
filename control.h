@@ -38,7 +38,7 @@
 #define SIZE 100
 
 // Declare variables and structures
-static pthread_mutex_t lock, file, t;
+static pthread_mutex_t lock, file;
 static volatile int flag0 = 1, flag1 = 1, flag2 = 1;
 
 typedef struct rtlsdr_struct {

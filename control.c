@@ -153,7 +153,6 @@ void rtlsdr_bias(uint8_t i2c_val)
 
 void set_flag(int id)
 {
-	pthread_mutex_lock(&t);
 	if(id == 0) {
 		flag0 = 0;
 	} else if(id == 1) {
@@ -163,12 +162,10 @@ void set_flag(int id)
 	} else {
 		fprintf(stderr, "ERROR: [%d] id not specified at %s:%d", id, __FILE__, __LINE__);
 	}
-	pthread_mutex_unlock(&t);
 }
 
 void reset_flag(int id)
 {
-	pthread_mutex_lock(&t);
 	if(id == 0) {
 		flag0 = 1;
 	} else if(id == 1) {
@@ -178,5 +175,4 @@ void reset_flag(int id)
 	} else {
 		fprintf(stderr, "ERROR: [%d] id not specified at %s:%d", id, __FILE__, __LINE__);
 	}
-	pthread_mutex_unlock(&t);
 }

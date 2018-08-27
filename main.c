@@ -101,9 +101,7 @@ void * super_t(void * ptr)
   }
 
   // Wait for SDRs
-  pthread_mutex_lock(&t);
   while(flag0 || flag1 || flag2);
-  pthread_mutex_unlock(&t);
   // Sleep for 100 milliseconds
   sleep(0.1);
   // Switch RTL-SDRs Bias for Data Collection
@@ -134,8 +132,7 @@ int main(void)
   // Prepare structures
   sdrs_setup();
   // Initialize mutex
-  if(pthread_mutex_init(&lock, NULL) || pthread_mutex_init(&file, NULL)
-    || pthread_mutex_init(&t, NULL))
+  if(pthread_mutex_init(&lock, NULL) || pthread_mutex_init(&file, NULL))
   {
     printf("\n mutex init has failed\n");
     return 1;
@@ -160,7 +157,6 @@ int main(void)
   // Destroy mutex
   pthread_mutex_destroy(&lock);
   pthread_mutex_destroy(&file);
-  pthread_mutex_destroy(&t);
 
   return 0;
 }

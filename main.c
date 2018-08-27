@@ -84,7 +84,7 @@ void * super_t(void * ptr)
   // Open Supervisory Channel
   rtlsdr_open(&(super.dev), super.id);
   // Set RTL-SDRs Bias for Noise Collection
-  rtlsdr_bias(0x1f);
+  rtlsdr_bias(1, 0x1f);
 
   struct thread_struct tmp[3];
 
@@ -101,11 +101,11 @@ void * super_t(void * ptr)
   }
 
   // Wait for SDRs
-  while(flag0 || flag1 || flag2);
+  //while(flag0 || flag1 || flag2);
   // Sleep for 100 milliseconds
   sleep(0.1);
   // Switch RTL-SDRs Bias for Data Collection
-  rtlsdr_bias(0x00);
+  rtlsdr_bias(0, 0x00);
   // Close Supervisory Channel
   rtlsdr_close(super.dev);
 

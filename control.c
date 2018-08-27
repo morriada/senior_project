@@ -129,16 +129,16 @@ void collect(int id, int f)
 	file_save(id, f);
 }
 
-void rtlsdr_bias(uint8_t i2c_val)
+void rtlsdr_bias(int bias, uint8_t i2c_val)
 {
 	int r;
 	// Set the bias tee by setting the gpio bit 0 to bias_off
-  	if((r = rtlsdr_set_bias_tee(super.dev, 1)) < 0)
+  	if((r = rtlsdr_set_bias_tee(super.dev, bias)) < 0)
 		printf("WARNING: [%d] Failed to set bias tee.\n", r);
   	// Set rtlsdr repeater for the i2communication via RTL2838
   	rtlsdr_set_i2c_repeater(super.dev, i2c_repeater_on);
   	// Set register to the output
-  	if((r = rtlsdr_i2c_write_reg(super.dev, i2c_addr, 0x03, 0)) < 0)
+  	if((r = rtlsdr_i2c_write_reg(super.dev, i2c_addr, 0x03, 0x00)) < 0)
 		printf("WARNING: [%d] Failed to write to i2c.\n", r);
   	// Set value to the register as described in the table
   	if((r = rtlsdr_i2c_write_reg(super.dev, i2c_addr, 0x01, i2c_val)) < 0)

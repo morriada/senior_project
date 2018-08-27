@@ -72,7 +72,7 @@ void rtlsdr_setup(int id);
  * 							noise card or from the antenna's.
  * @param i2c_val 2 byte value for register on RTL-SDR
  */
-void rtlsdr_bias(uint8_t i2c_val);
+void rtlsdr_bias(int bias, uint8_t i2c_val);
 
 /*
  * collect - Colects the data as set up from the rtlsdr_setup function.

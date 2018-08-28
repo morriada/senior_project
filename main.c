@@ -35,12 +35,14 @@ extern void rtlsdr_setup(int);
 extern void rtlsdr_freq(int, int);
 extern void rtlsdr_bias(int, uint8_t);
 extern void collect(int, int);
-extern void set_flag(int);
-extern void reset_flag(int);
 
 // Initialize variables
 extern pthread_mutex_t lock;
 extern pthread_mutex_t file;
+
+int sdr0[2];
+int sdr1[2];
+int sdr2[2];
 
 // DSP Thread
 void dodsp(void * ptr)
@@ -63,14 +65,37 @@ void * collect_t(void * ptr)
   // Reset Buffer
   if((r = rtlsdr_reset_buffer(sdrs[ts->id].dev)) < 0)
     printf("WARNING: [%d] Failed to reset buffer.\n", r);
-  //Sets bias
+  // Sets bias
   rtlsdr_set_bias_tee(sdrs[ts->id].dev, 1);
-  // Sets flag to 0
-  set_flag(ts->id);
+  // Tell Supervisory thread I'm here
+  r = 1;
+  if(ts->id == 0) {
+    if(write(sdr0[WRITE], &r, 1) < 0)
+      printf("ERROR: Pipe sdr%d write.\n", ts->id);
+  } else if(ts->id == 1) {
+    if(write(sdr1[WRITE], &r, 1) < 0)
+      printf("ERROR: Pipe sdr%d write.\n", ts->id);
+  } else if(ts->id == 2) {
+    if(write(sdr2[WRITE], &r, 1) < 0)
+      printf("ERROR: Pipe sdr%d write.\n", ts->id);
+  }
+  // Wait for Supervisory thread to say continue
+  r = 0;
+  while(!r)
+  {
+    if(ts->id == 0) {
+      if(read(sdr0[READ], &r, 1) < 0)
+        printf("ERROR: Pipe sdr%d read.\n", ts->id);
+    } else if(ts->id == 1) {
+      if(read(sdr1[READ], &r, 1) < 0)
+        printf("ERROR: Pipe sdr%d read.\n", ts->id);
+    } else if(ts->id == 2) {
+      if(read(sdr2[READ], &r, 1) < 0)
+        printf("ERROR: Pipe sdr%d read.\n", ts->id);
+    }
+  }
   // Collect Data
   collect(ts->id, ts->freq);
-  // Reset flag to 1
-  reset_flag(ts->id);
   // Close RTL-SDR device
   rtlsdr_close(sdrs[ts->id].dev);
 
@@ -82,11 +107,6 @@ void * super_t(void * ptr)
 {
   int i;
   int * n = (int *)ptr;
-
-  // Open Supervisory Channel
-  rtlsdr_open(&(super.dev), super.id);
-  // Set RTL-SDRs Bias for Noise Collection
-  rtlsdr_bias(1, 0x1f);
 
   struct thread_struct tmp[3];
 
@@ -102,8 +122,45 @@ void * super_t(void * ptr)
     }
   }
 
-  // Wait for SDRs
-  //while(flag0 || flag1 || flag2);
+  int ret;
+  for(i = 0; i < NUM_SDRS; ++i)
+  {
+    ret = 0;
+    while(!ret)
+    {
+      if(i == 0) {
+        if(read(sdr0[READ], &ret, 1) < 0)
+          printf("ERROR: Pipe sdr%d read.\n", i);
+      } else if(i == 1) {
+        if(read(sdr1[READ], &ret, 1) < 0)
+          printf("ERROR: Pipe sdr%d read.\n", i);
+      } else if(i == 2) {
+        if(read(sdr2[READ], &ret, 1) < 0)
+          printf("ERROR: Pipe sdr%d read.\n", i);
+      }
+    }
+  }
+
+  // Open Supervisory Channel
+  rtlsdr_open(&(super.dev), super.id);
+  // Set RTL-SDRs Bias for Noise Collection
+  rtlsdr_bias(1, 0x1f);
+
+  ret = 1;
+  for(i = 0; i < NUM_SDRS; ++i)
+  {
+    if(i == 0) {
+      if(write(sdr0[WRITE], &ret, 1) < 0)
+        printf("ERROR: Pipe sdr%d write.\n", i);
+    } else if(i == 1) {
+      if(write(sdr1[WRITE], &ret, 1) < 0)
+        printf("ERROR: Pipe sdr%d write.\n", i);
+    } else if(i == 2) {
+      if(write(sdr2[WRITE], &ret, 1) < 0)
+        printf("ERROR: Pipe sdr%d write.\n", i);
+    }
+  }
+
   // Sleep for 100 milliseconds
   sleep(0.1);
   // Switch RTL-SDRs Bias for Data Collection

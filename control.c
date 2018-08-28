@@ -148,29 +148,3 @@ void rtlsdr_bias(int bias, uint8_t i2c_val)
   	// Reset the buffer
   	rtlsdr_reset_buffer(super.dev);
 }
-
-void set_flag(int id)
-{
-	if(id == 0) {
-		flag0 = 0;
-	} else if(id == 1) {
-		flag1 = 0;
-	} else if(id == 2) {
-		flag2 = 0;
-	} else {
-		fprintf(stderr, "ERROR: [%d] id not specified at %s:%d", id, __FILE__, __LINE__);
-	}
-}
-
-void reset_flag(int id)
-{
-	if(id == 0) {
-		flag0 = 1;
-	} else if(id == 1) {
-		flag1 = 1;
-	} else if(id == 2) {
-		flag2 = 1;
-	} else {
-		fprintf(stderr, "ERROR: [%d] id not specified at %s:%d", id, __FILE__, __LINE__);
-	}
-}

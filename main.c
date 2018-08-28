@@ -190,6 +190,12 @@ int main(void)
   int n;
   // Prepare structures
   sdrs_setup();
+  // Initialize pipes
+  if((pipe(sdr0) < 0) || (pipe(sdr1) < 0) || (pipe(sdr2) < 0))
+  {
+    printf("\n pipe init has failed\n");
+    return 1;
+  }
   // Initialize mutex
   if(pthread_mutex_init(&lock, NULL) || pthread_mutex_init(&file, NULL))
   {

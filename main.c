@@ -56,13 +56,6 @@ void * collect_t(void * ptr)
   struct thread_struct * ts = (struct thread_struct *)ptr;
   int r;
 
-  // Setup RTL-SDRs
-  rtlsdr_setup(ts->id);
-  // Set RTL-SDRs for desired frequency
-  rtlsdr_freq(ts->id, ts->freq);
-  // Reset Buffer
-  if((r = rtlsdr_reset_buffer(sdrs[ts->id].dev)) < 0)
-    printf("WARNING: [%d] Failed to reset buffer.\n", r);
   // Tell Super thread we're at collection
   int val = 1;
   if (ts->id == 0) {
@@ -72,84 +65,17 @@ void * collect_t(void * ptr)
   } else if (ts->id == 2) {
     write(sdr2[WRITE], &val, 1);
   }
+  // Wait for Super thread to continue
+  int ret = 0;
+  if (ts->id == 0) {
+    read(sdr0[WRITE], &ret, 1);
+  } else if (ts->id == 1) {
+    read(sdr1[WRITE], &ret, 1);
+  } else if (ts->id == 2) {
+    read(sdr2[WRITE], &ret, 1);
+  }
   // Collect Data
   collect(ts->id, ts->freq);
-  // Close RTL-SDR device
-  rtlsdr_close(sdrs[ts->id].dev);
-
-  pthread_exit(NULL);
-}
-
-// Supervisory SDR Thread
-void * super_t(void * ptr)
-{
-  int i, r;
-  int * n = (int *)ptr;
-
-  // Open Supervisory Channel
-  rtlsdr_open(&(super.dev), super.id);
-  // Open the 3 RTL-SDRs
-  rtlsdr_open(&(sdrs[0].dev), 0);
-  rtlsdr_open(&(sdrs[1].dev), 1);
-  rtlsdr_open(&(sdrs[2].dev), 2);
-  // Change Bias Tee for the 3 RTL-SDRs
-  if((r = rtlsdr_set_bias_tee(sdrs[0].dev, 1)) < 0)
-    printf("WARNING: [%d] Failed to set bias tee.\n", r);
-  if((r = rtlsdr_set_bias_tee(sdrs[1].dev, 1)) < 0)
-    printf("WARNING: [%d] Failed to set bias tee.\n", r);
-  if((r = rtlsdr_set_bias_tee(sdrs[2].dev, 1)) < 0)
-    printf("WARNING: [%d] Failed to set bias tee.\n", r);
-  // Set RTL-SDRs Bias for Noise Collection
-  rtlsdr_bias(1, 0x1f);
-
-  struct thread_struct tmp[3];
-
-  // Create a collection thread for each RTL-SDR
-  for(i = 0; i < NUM_SDRS; ++i)
-  {
-    tmp[i].id = i;
-    tmp[i].freq = *n;
-    struct thread_struct * ts = &tmp[i];
-    if(pthread_create(&(sdrs[i].collection_t), NULL, collect_t, (void *)ts)) {
-      //fprintf(stderr, "Error creating thread\n");
-      exit(1);
-    }
-  }
-
-  // Wait for SDRs to be at collection
-  int ret;
-  for(i = 0; i < NUM_SDRS; ++i)
-  {
-    ret = 0;
-    while(!ret)
-    {
-      if (i == 0) {
-        read(sdr0[READ], &ret, 1);
-      } else if (i == 1) {
-        read(sdr1[READ], &ret, 1);
-      } else if (i == 2) {
-        read(sdr2[READ], &ret, 1);
-      }
-    }
-  }
-
-  // Sleep for 100 milliseconds
-  sleep(0.1);
-  // Switch RTL-SDRs Bias for Data Collection
-  rtlsdr_bias(1, 0x00);
-  // Close Supervisory Channel
-  rtlsdr_close(super.dev);
-
-  // Wait for each collection thread to join
-  for(i = 0; i < NUM_SDRS; ++i)
-  {
-    if(pthread_join(sdrs[i].collection_t, NULL)) {
-      //fprintf(stderr, "Error joining thread\n");
-      exit(1);
-    }
-  }
-
-  // Create a DSP thread
 
   pthread_exit(NULL);
 }
@@ -159,7 +85,7 @@ void * super_t(void * ptr)
 int main(void)
 {
   // Declare variables
-  int n;
+  int i, n, r;
   // Prepare structures
   sdrs_setup();
   // Initialize pipes
@@ -179,15 +105,93 @@ int main(void)
   {
     for(n = 0; n < 4; ++n)
     {
-      if(pthread_create(&(super.collection_t), NULL, super_t, (void *)&n)) {
-        //fprintf(stderr, "Error creating thread\n");
-        exit(1);
+      // Open Supervisory Channel
+      rtlsdr_open(&(super.dev), super.id);
+      // Open the 3 RTL-SDRs
+      rtlsdr_open(&(sdrs[0].dev), 0);
+      rtlsdr_open(&(sdrs[1].dev), 1);
+      rtlsdr_open(&(sdrs[2].dev), 2);
+      // Change Bias Tee for the 3 RTL-SDRs
+      if((r = rtlsdr_set_bias_tee(sdrs[0].dev, 1)) < 0)
+        printf("WARNING: [%d] Failed to set bias tee.\n", r);
+      if((r = rtlsdr_set_bias_tee(sdrs[1].dev, 1)) < 0)
+        printf("WARNING: [%d] Failed to set bias tee.\n", r);
+      if((r = rtlsdr_set_bias_tee(sdrs[2].dev, 1)) < 0)
+        printf("WARNING: [%d] Failed to set bias tee.\n", r);
+      // Set RTL-SDRs Bias for Noise Collection
+      rtlsdr_bias(1, 0x1f);
+
+      for(i = 0; i < NUM_SDRS; ++i)
+      {
+        // Setup RTL-SDRs
+        rtlsdr_setup(i);
+        // Set RTL-SDRs for desired frequency
+        rtlsdr_freq(i, n);
+        // Reset Buffer
+        if((r = rtlsdr_reset_buffer(sdrs[i].dev)) < 0)
+          printf("WARNING: [%d] Failed to reset buffer.\n", r);
       }
 
-      if(pthread_join(super.collection_t, NULL)) {
-        //fprintf(stderr, "Error joining thread\n");
-        exit(1);
+      struct thread_struct tmp[3];
+
+      // Create a collection thread for each RTL-SDR
+      for(i = 0; i < NUM_SDRS; ++i)
+      {
+        tmp[i].id = i;
+        tmp[i].freq = *n;
+        struct thread_struct * ts = &tmp[i];
+        if(pthread_create(&(sdrs[i].collection_t), NULL, collect_t, (void *)ts)) {
+          //fprintf(stderr, "Error creating thread\n");
+          exit(1);
+        }
       }
+
+      // Wait for SDRs to be at collection
+      int ret;
+      for(i = 0; i < NUM_SDRS; ++i)
+      {
+        ret = 0;
+        while(!ret)
+        {
+          if (i == 0) {
+            read(sdr0[READ], &ret, 1);
+          } else if (i == 1) {
+            read(sdr1[READ], &ret, 1);
+          } else if (i == 2) {
+            read(sdr2[READ], &ret, 1);
+          }
+        }
+      }
+      // Tell threads to continue
+      ret = 1;
+      for(i = 0; i < NUM_SDRS; ++i)
+      {
+        if (i == 0) {
+          write(sdr0[WRITE], &ret, 1);
+        } else if (i == 1) {
+          write(sdr1[WRITE], &ret, 1);
+        } else if (i == 2) {
+          write(sdr2[WRITE], &ret, 1);
+        }
+      }
+
+      // Sleep for 100 milliseconds
+      sleep(1);
+      // Switch RTL-SDRs Bias for Data Collection
+      rtlsdr_bias(1, 0x00);
+
+      // Wait for each collection thread to join
+      for(i = 0; i < NUM_SDRS; ++i)
+      {
+        if(pthread_join(sdrs[i].collection_t, NULL)) {
+          //fprintf(stderr, "Error joining thread\n");
+          exit(1);
+        }
+        // Close RTL-SDR device
+        rtlsdr_close(sdrs[i].dev);
+      }
+      // Close Supervisory Channel
+      rtlsdr_close(super.dev);
     }
   }
 

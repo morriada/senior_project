@@ -36,7 +36,6 @@ extern void rtlsdr_bias(int, uint8_t);
 extern void collect(int, int, rtlsdr_dev_t *);
 
 // Initialize variables
-extern pthread_mutex_t lock;
 extern pthread_mutex_t file;
 
 int sdr0[2];
@@ -66,6 +65,7 @@ void * collect_t(void * ptr)
   } else if (ts->id == 2) {
     write(sdr2[WRITE], &val, 1);
   }
+printf("Here %d\n", ts->id);
   // Wait for Super thread to continue
   int ret = 1;
   while(ret)
@@ -92,13 +92,10 @@ void * init_t(void * ptr)
   rtlsdr_open(&dev, ts->id);
   ts->dev = dev;
   sdrs[ts->id].dev = dev;
-  usleep(50000);
   rtlsdr_setup(ts->id, ts->freq, dev);
-  usleep(50000);
   rtlsdr_reset_buffer(dev);
-  usleep(50000);
   rtlsdr_set_bias_tee(dev, 1);
-  usleep(50000);
+  sleep(2);
 
   pthread_exit(NULL);
 }
@@ -179,6 +176,7 @@ int main(void)
           }
         }
       }
+printf("Here\n");
       // Tell threads to continue
       ret = 0;
       for(i = 0; i < NUM_SDRS; ++i)

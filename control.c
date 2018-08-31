@@ -55,22 +55,19 @@ void sdrs_setup(void)
 void rtlsdr_setup(int id, int f, rtlsdr_dev_t *dev)
 {
 	int r, time = 500000;
-	// Disable dithering
-	if((r = rtlsdr_set_dithering(dev, disable_dither)) < 0)
-		printf("WARNING: [%d] Failed to set dithering.\n", r);
-	sleep(1);
 	// Set the sample rate of the rtl-sdr
 	if((r = rtlsdr_set_sample_rate(dev, sample_rate)) < 0)
 		printf("WARNING: [%d] Failed to set sample rate.\n", r);
-	usleep(time);
+	// Disable dithering
+	if((r = rtlsdr_set_dithering(dev, disable_dither)) < 0)
+		printf("WARNING: [%d] Failed to set dithering.\n", r);
 	// Set the IF frequency
 //	if((r = rtlsdr_set_if_freq(dev, if_freq)) < 0)
 //		printf("WARNING: [%d] Failed to set if frequency.\n", r);
-//	usleep(time);
 	// Set the center frequency
 	if((r = rtlsdr_set_center_freq(dev, freq[f])) < 0)
 		printf("WARNING: [%d] Failed to set if frequency.\n", r);
-	usleep(time);
+	sleep(2);
 	// Set the tuner gain mode to automatic
 	if((r = rtlsdr_set_tuner_gain_mode(dev, auto_gain)) < 0)
 		printf("WARNING: [%d] Failed to set tuner gain.\n", r);

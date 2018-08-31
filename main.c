@@ -58,7 +58,7 @@ void * collect_t(void * ptr)
 {
   struct thread_struct * ts = (struct thread_struct *)ptr;
   int r;
-
+/*
   if (ts->id == 0) {
     close(sdr0[READ]);
     close(sdr1[READ]);
@@ -93,7 +93,7 @@ void * collect_t(void * ptr)
     close(super1[WRITE]);
     close(super2[WRITE]);
   }
-
+*/
   rtlsdr_open(&(sdrs[ts->id].dev), ts->id);
   rtlsdr_setup(ts->id, ts->freq);
   rtlsdr_reset_buffer(sdrs[ts->id].dev);
@@ -183,14 +183,14 @@ int main(void)
           //fprintf(stderr, "Error creating thread\n");
           exit(1);
         }
-      }
+      }/*
       close(sdr0[WRITE]);
       close(sdr1[WRITE]);
       close(sdr2[WRITE]);
       close(super0[READ]);
       close(super1[READ]);
       close(super2[READ]);
-
+*/
       // Wait for SDRs to be at collection
       for(i = 0; i < NUM_SDRS; ++i)
       {

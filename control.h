@@ -49,7 +49,7 @@ typedef struct rtlsdr_struct {
 	uint32_t id;
 	uint8_t *buffer;
 	rtlsdr_dev_t *dev;
-	pthread_t collection_t;
+	pthread_t collection_t, initialize_t;
 } rtlsdr_struct;
 struct rtlsdr_struct super;
 struct rtlsdr_struct sdrs[3];

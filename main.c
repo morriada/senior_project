@@ -81,6 +81,22 @@ void * collect_t(void * ptr)
   pthread_exit(NULL);
 }
 
+void * init_t(void * ptr)
+{
+  struct thread_struct * ts = (struct thread_struct *)ptr;
+
+  rtlsdr_open(&(sdrs[ts->id].dev), ts->id);
+  usleep(50000);
+  rtlsdr_setup(ts->id, ts->freq);
+  usleep(50000);
+  rtlsdr_reset_buffer(sdrs[ts->id].dev);
+  usleep(50000);
+  rtlsdr_set_bias_tee(sdrs[ts->id].dev, 1);
+  usleep(50000);
+
+  pthread_exit(NULL);
+}
+
 
 // Main Program
 int main(void)
@@ -146,7 +162,7 @@ int main(void)
       rtlsdr_reset_buffer(sdrs[0].dev);
 */
 
-      r = rtlsdr_open(&(sdrs[2].dev), 2);
+/*      r = rtlsdr_open(&(sdrs[2].dev), 2);
       printf("rtlsdr_open(2) returned %d.\n", r);
       rtlsdr_setup(2, n);
       r = rtlsdr_reset_buffer(sdrs[2].dev);
@@ -170,18 +186,33 @@ int main(void)
       usleep(m_time);
       rtlsdr_set_bias_tee(sdrs[0].dev, 1);
       usleep(m_time);
-
-      rtlsdr_open(&(super.dev), 3);
-
-      rtlsdr_bias(0, 0x1f);
-
+*/
       struct thread_struct tmp[3];
 
-      // Create a collection thread for each RTL-SDR
       for(i = 0; i < NUM_SDRS; ++i)
       {
         tmp[i].id = i;
         tmp[i].freq = n;
+        struct thread_struct * ts = &tmp[i];
+        if(pthread_create(&(sdrs[i].initialize_t), NULL, init_t, (void *)ts)) {
+          exit(1);
+        }
+      }
+
+      for(i = 0; i < NUM_SDRS; ++i)
+      {
+        if(pthread_join(sdrs[i].initialize_t, NULL)) {
+	  exit(1);
+	}
+      }
+
+      rtlsdr_open(&(super.dev), 3);
+      rtlsdr_bias(0, 0x1f);
+
+
+      // Create a collection thread for each RTL-SDR
+      for(i = 0; i < NUM_SDRS; ++i)
+      {
         struct thread_struct * ts = &tmp[i];
         if(pthread_create(&(sdrs[i].collection_t), NULL, collect_t, (void *)ts)) {
           //fprintf(stderr, "Error creating thread\n");

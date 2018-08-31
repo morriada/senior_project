@@ -46,6 +46,7 @@ void sdrs_setup(void)
 		sdrs[i].blocksize = BSIZE;
 		sdrs[i].buffer = calloc(BSIZE, sizeof(uint8_t));
 		sdrs[i].collection_t = (pthread_t)malloc(sizeof(pthread_t));
+		sdrs[i].initialize_t = (pthread_t)malloc(sizeof(pthread_t));
 	}
 	super.id = NUM_SDRS;
 	super.blocksize = 0;
@@ -54,38 +55,25 @@ void sdrs_setup(void)
 void rtlsdr_setup(int id, int f)
 {
 	int r, time = 500000;
-	// Set the sample rate of the rtl-sdr
-	if((r = rtlsdr_set_sample_rate(sdrs[id].dev, sample_rate)) < 0)
-		printf("WARNING: [%d] Failed to set sample rate.\n", r);
-	else
-		printf("rtlsdr_set_sample_rate(%d) returned %d.\n", id, r);
-	usleep(time);
 	// Disable dithering
 	if((r = rtlsdr_set_dithering(sdrs[id].dev, disable_dither)) < 0)
 		printf("WARNING: [%d] Failed to set dithering.\n", r);
-	else
-		printf("rtlsdr_set_dithering(%d) returned %d.\n", id, r);
+	sleep(1);
+	// Set the sample rate of the rtl-sdr
+	if((r = rtlsdr_set_sample_rate(sdrs[id].dev, sample_rate)) < 0)
+		printf("WARNING: [%d] Failed to set sample rate.\n", r);
 	usleep(time);
-	// Set the tuner gain mode to automatic
-//	if((r = rtlsdr_set_tuner_gain_mode(sdrs[id].dev, auto_gain)) < 0)
-//		printf("WARNING: [%d] Failed to set tuner gain.\n", r);
-//	usleep(time);
 	// Set the IF frequency
-	if((r = rtlsdr_set_if_freq(sdrs[id].dev, if_freq)) < 0)
-		printf("WARNING: [%d] Failed to set if frequency.\n", r);
-	else
-		printf("rtlsdr_set_if_freq(%d) returned %d.\n", id, r);
-	usleep(time);
+//	if((r = rtlsdr_set_if_freq(sdrs[id].dev, if_freq)) < 0)
+//		printf("WARNING: [%d] Failed to set if frequency.\n", r);
+//	usleep(time);
 	// Set the center frequency
 	if((r = rtlsdr_set_center_freq(sdrs[id].dev, freq[f])) < 0)
 		printf("WARNING: [%d] Failed to set if frequency.\n", r);
-	else
-		printf("rtlsdr_set_center_freq(%d) returned %d.\n", id, r);
 	usleep(time);
+	// Set the tuner gain mode to automatic
 	if((r = rtlsdr_set_tuner_gain_mode(sdrs[id].dev, auto_gain)) < 0)
 		printf("WARNING: [%d] Failed to set tuner gain.\n", r);
-	else
-		printf("rtlsdr_set_tuner_gain_mode(%d) returned %d.\n", id, r);
 }
 
 void file_save(int sdr_num, int f)
@@ -155,6 +143,4 @@ void rtlsdr_bias(int bias, uint8_t i2c_val)
 			printf("WARNING: [%d] Failed to write to i2c.\n", r);
   	// Close the i2c_repeater
   	rtlsdr_set_i2c_repeater(super.dev, i2c_repeater_off);
-  	// Reset the buffer
-//  	rtlsdr_reset_buffer(super.dev);
 }

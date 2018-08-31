@@ -128,6 +128,15 @@ void * collect_t(void * ptr)
   // Close RTL-SDR device
   rtlsdr_close(sdrs[ts->id].dev);
 
+  val = 0;
+  if (ts->id == 0) {
+    write(sdr0[WRITE], &val, 1);
+  } else if (ts->id == 1) {
+    write(sdr1[WRITE], &val, 1);
+  } else if (ts->id == 2) {
+    write(sdr2[WRITE], &val, 1);
+  }
+
   pthread_exit(NULL);
 }
 
@@ -165,6 +174,11 @@ int main(void)
     {
       struct thread_struct tmp[3];
 
+      int ret = 0;
+      write(super0[WRITE], &ret, 1);
+      write(super1[WRITE], &ret, 1);
+      write(super2[WRITE], &ret, 1);
+
       // Create a collection thread for each RTL-SDR
       for(i = 0; i < NUM_SDRS; ++i)
       {
@@ -178,7 +192,6 @@ int main(void)
       }
 
       // Wait for SDRs to be at collection
-      int ret;
       for(i = 0; i < NUM_SDRS; ++i)
       {
         ret = 0;
@@ -201,16 +214,9 @@ int main(void)
 
       // Tell threads to continue
       ret = 1;
-      for(i = 0; i < NUM_SDRS; ++i)
-      {
-        if (i == 0) {
-          write(super0[WRITE], &ret, 1);
-        } else if (i == 1) {
-          write(super1[WRITE], &ret, 1);
-        } else if (i == 2) {
-          write(super2[WRITE], &ret, 1);
-        }
-      }
+      write(super0[WRITE], &ret, 1);
+      write(super1[WRITE], &ret, 1);
+      write(super2[WRITE], &ret, 1);
 
       // Sleep for 100 milliseconds
       usleep(m_time);

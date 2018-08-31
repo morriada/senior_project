@@ -111,12 +111,15 @@ void * collect_t(void * ptr)
 
   // Wait for Super thread to continue
   int ret = 0;
-  if (ts->id == 0) {
-    read(super0[READ], &ret, 1);
-  } else if (ts->id == 1) {
-    read(super1[READ], &ret, 1);
-  } else if (ts->id == 2) {
-    read(super2[READ], &ret, 1);
+  while(!ret)
+  {
+    if (ts->id == 0) {
+      read(super0[READ], &ret, 1);
+    } else if (ts->id == 1) {
+      read(super1[READ], &ret, 1);
+    } else if (ts->id == 2) {
+      read(super2[READ], &ret, 1);
+    }
   }
 
   // Collect Data
@@ -137,11 +140,18 @@ int main(void)
   // Prepare structures
   sdrs_setup();
   // Initialize pipes
-  if((pipe(sdr0) < 0) || (pipe(sdr1) < 0) || (pipe(sdr2) < 0))
+  if((pipe(sdr0) < 0) || (pipe(sdr1) < 0) || (pipe(sdr2) < 0)
+    || (pipe(super0) < 0) || (pipe(super1) < 0) || (pipe(super2) < 0))
   {
     printf("\n pipe init has failed\n");
     return 1;
   }
+  close(sdr0[WRITE]);
+  close(sdr1[WRITE]);
+  close(sdr2[WRITE]);
+  close(super0[READ]);
+  close(super1[READ]);
+  close(super2[READ]);
   // Initialize mutex
   if(pthread_mutex_init(&file, NULL))
    {

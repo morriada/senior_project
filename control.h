@@ -42,7 +42,7 @@
 #define WRITE 1
 
 // Declare variables and structures
-static pthread_mutex_t lock, file;
+static pthread_mutex_t file;
 
 typedef struct rtlsdr_struct {
 	int blocksize;

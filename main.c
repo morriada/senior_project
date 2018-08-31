@@ -204,11 +204,11 @@ int main(void)
       for(i = 0; i < NUM_SDRS; ++i)
       {
         if (i == 0) {
-          write(sdr0[WRITE], &ret, 1);
+          write(super0[WRITE], &ret, 1);
         } else if (i == 1) {
-          write(sdr1[WRITE], &ret, 1);
+          write(super1[WRITE], &ret, 1);
         } else if (i == 2) {
-          write(sdr2[WRITE], &ret, 1);
+          write(super2[WRITE], &ret, 1);
         }
       }
 

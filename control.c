@@ -51,29 +51,41 @@ void sdrs_setup(void)
 	super.blocksize = 0;
 }
 
-void rtlsdr_setup(int id)
+void rtlsdr_setup(int id, int f)
 {
-	int r;
+	int r, time = 500000;
 	// Set the sample rate of the rtl-sdr
 	if((r = rtlsdr_set_sample_rate(sdrs[id].dev, sample_rate)) < 0)
 		printf("WARNING: [%d] Failed to set sample rate.\n", r);
+	else
+		printf("rtlsdr_set_sample_rate(%d) returned %d.\n", id, r);
+	usleep(time);
 	// Disable dithering
 	if((r = rtlsdr_set_dithering(sdrs[id].dev, disable_dither)) < 0)
 		printf("WARNING: [%d] Failed to set dithering.\n", r);
+	else
+		printf("rtlsdr_set_dithering(%d) returned %d.\n", id, r);
+	usleep(time);
 	// Set the tuner gain mode to automatic
-	if((r = rtlsdr_set_tuner_gain_mode(sdrs[id].dev, auto_gain)) < 0)
-		printf("WARNING: [%d] Failed to set tuner gain.\n", r);
-}
-
-void rtlsdr_freq(int id, int f)
-{
-	int r;
+//	if((r = rtlsdr_set_tuner_gain_mode(sdrs[id].dev, auto_gain)) < 0)
+//		printf("WARNING: [%d] Failed to set tuner gain.\n", r);
+//	usleep(time);
 	// Set the IF frequency
 	if((r = rtlsdr_set_if_freq(sdrs[id].dev, if_freq)) < 0)
 		printf("WARNING: [%d] Failed to set if frequency.\n", r);
+	else
+		printf("rtlsdr_set_if_freq(%d) returned %d.\n", id, r);
+	usleep(time);
 	// Set the center frequency
 	if((r = rtlsdr_set_center_freq(sdrs[id].dev, freq[f])) < 0)
-		printf("WARNING: [%d] Failed to set center frequency.\n", r);
+		printf("WARNING: [%d] Failed to set if frequency.\n", r);
+	else
+		printf("rtlsdr_set_center_freq(%d) returned %d.\n", id, r);
+	usleep(time);
+	if((r = rtlsdr_set_tuner_gain_mode(sdrs[id].dev, auto_gain)) < 0)
+		printf("WARNING: [%d] Failed to set tuner gain.\n", r);
+	else
+		printf("rtlsdr_set_tuner_gain_mode(%d) returned %d.\n", id, r);
 }
 
 void file_save(int sdr_num, int f)
@@ -112,9 +124,7 @@ void collect(int id, int f)
 	ret = n_read = 0;
 	blocksize = sdrs[id].blocksize;
 
-	pthread_mutex_lock(&lock);
 	ret = rtlsdr_read_sync(sdrs[id].dev, sdrs[id].buffer, blocksize, &n_read);
-	pthread_mutex_unlock(&lock);
 
 	// Check for errors
 	if(ret < 0) {
@@ -146,5 +156,5 @@ void rtlsdr_bias(int bias, uint8_t i2c_val)
   	// Close the i2c_repeater
   	rtlsdr_set_i2c_repeater(super.dev, i2c_repeater_off);
   	// Reset the buffer
-  	rtlsdr_reset_buffer(super.dev);
+//  	rtlsdr_reset_buffer(super.dev);
 }

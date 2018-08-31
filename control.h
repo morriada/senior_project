@@ -33,7 +33,9 @@
 #include "rtl-sdr.h"
 
 // Define Macros
-#define BSIZE 10560000
+//#define BSIZE 10559488
+//#define BSIZE 499712
+#define BSIZE 5279744
 #define NUM_SDRS 3
 #define READ 0
 #define SIZE 100
@@ -66,7 +68,7 @@ void sdrs_setup(void);
  * rtlsdr_setup - Sets up an individual RTL-SDR at the beginning of the program.
  * @param id ID of RTL-SDR - expecting an integer from 0 to NUM_SDRS
  */
-void rtlsdr_setup(int id);
+void rtlsdr_setup(int id, int f);
 
 /*
  * rtlsdr_bias - Sets bias of Supervisory RTL-SDR for data collection from the

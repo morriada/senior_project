@@ -28,7 +28,7 @@ static volatile uint32_t freq[] = {
 	151000000
 };
 
-int i, time = 50000;
+int i, c_time = 50000;
 int auto_gain = 0;
 int disable_dither = 0;
 int i2c_repeater_on = 1;
@@ -57,22 +57,22 @@ void rtlsdr_setup(int id, int f)
 	// Set the sample rate of the rtl-sdr
 	if((r = rtlsdr_set_sample_rate(sdrs[id].dev, sample_rate)) < 0)
 		printf("WARNING: [%d] Failed to set sample rate.\n", r);
-	usleep(time);
+	usleep(c_time);
 	// Disable dithering
 	if((r = rtlsdr_set_dithering(sdrs[id].dev, disable_dither)) < 0)
 		printf("WARNING: [%d] Failed to set dithering.\n", r);
-	usleep(time);
+	usleep(c_time);
 	// Set the IF frequency
 	if((r = rtlsdr_set_if_freq(sdrs[id].dev, if_freq)) < 0)
 		printf("WARNING: [%d] Failed to set if frequency.\n", r);
-	usleep(time);
+	usleep(c_time);
 	// Set the center frequency
 	if((r = rtlsdr_set_center_freq(sdrs[id].dev, freq[f])) < 0)
 		printf("WARNING: [%d] Failed to set if frequency.\n", r);
-	usleep(time);
+	usleep(c_time);
 	if((r = rtlsdr_set_tuner_gain_mode(sdrs[id].dev, auto_gain)) < 0)
 		printf("WARNING: [%d] Failed to set tuner gain.\n", r);
-	usleep(time);
+	usleep(c_time);
 }
 
 void file_save(int sdr_num, int f)
@@ -132,19 +132,19 @@ void rtlsdr_bias(int bias, uint8_t i2c_val)
 	// Set the bias tee by setting the gpio bit 0 to bias_off
 	if((r = rtlsdr_set_bias_tee(super.dev, bias)) < 0)
 		printf("WARNING: [%d] Failed to set bias tee.\n", r);
-	usleep(time);
+	usleep(c_time);
 	// Set rtlsdr repeater for the i2communication via RTL2838
 	rtlsdr_set_i2c_repeater(super.dev, i2c_repeater_on);
-	usleep(time);
+	usleep(c_time);
 	// Set register to the output
 	if((r = rtlsdr_i2c_write_reg(super.dev, i2c_addr, 0x03, 0x00)) < 0)
 		printf("WARNING: [%d] Failed to write to i2c.\n", r);
-	usleep(time);
+	usleep(c_time);
 	// Set value to the register as described in the table
 	if((r = rtlsdr_i2c_write_reg(super.dev, i2c_addr, 0x01, i2c_val)) < 0)
 		printf("WARNING: [%d] Failed to write to i2c.\n", r);
-	usleep(time);
+	usleep(c_time);
 	// Close the i2c_repeater
 	rtlsdr_set_i2c_repeater(super.dev, i2c_repeater_off);
-	usleep(time);
+	usleep(c_time);
 }

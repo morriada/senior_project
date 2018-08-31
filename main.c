@@ -41,6 +41,9 @@ extern pthread_mutex_t file;
 int sdr0[2];
 int sdr1[2];
 int sdr2[2];
+int super0[2];
+int super1[2];
+int super2[2];
 
 int m_time = 1000000;
 
@@ -55,6 +58,41 @@ void * collect_t(void * ptr)
 {
   struct thread_struct * ts = (struct thread_struct *)ptr;
   int r;
+
+  if (ts->id == 0) {
+    close(sdr0[READ]);
+    close(sdr1[READ]);
+    close(sdr1[WRITE]);
+    close(sdr2[READ]);
+    close(sdr2[WRITE]);
+    close(super0[WRITE]);
+    close(super1[READ]);
+    close(super1[WRITE]);
+    close(super2[READ]);
+    close(super2[WRITE]);
+  } else if (ts->id == 1) {
+    close(sdr0[READ]);
+    close(sdr0[WRITE]);
+    close(sdr1[READ]);
+    close(sdr2[READ]);
+    close(sdr2[WRITE]);
+    close(super0[READ]);
+    close(super0[WRITE]);
+    close(super1[WRITE]);
+    close(super2[READ]);
+    close(super2[WRITE]);
+  } else if (ts->id == 2) {
+    close(sdr0[READ]);
+    close(sdr0[WRITE]);
+    close(sdr1[READ]);
+    close(sdr1[WRITE]);
+    close(sdr2[READ]);
+    close(super0[READ]);
+    close(super0[WRITE]);
+    close(super1[READ]);
+    close(super1[WRITE]);
+    close(super2[WRITE]);
+  }
 
   rtlsdr_open(&(sdrs[ts->id].dev), ts->id);
   rtlsdr_setup(ts->id, ts->freq);
@@ -74,18 +112,18 @@ void * collect_t(void * ptr)
   // Wait for Super thread to continue
   int ret = 0;
   if (ts->id == 0) {
-    read(sdr0[WRITE], &ret, 1);
+    read(super0[READ], &ret, 1);
   } else if (ts->id == 1) {
-    read(sdr1[WRITE], &ret, 1);
+    read(super1[READ], &ret, 1);
   } else if (ts->id == 2) {
-    read(sdr2[WRITE], &ret, 1);
+    read(super2[READ], &ret, 1);
   }
 
   // Collect Data
   collect(ts->id, ts->freq);
 
   // Close RTL-SDR device
-  rtlsdr_close(sdrs[i].dev);
+  rtlsdr_close(sdrs[ts->id].dev);
 
   pthread_exit(NULL);
 }

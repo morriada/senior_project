@@ -155,12 +155,6 @@ int main(void)
     printf("\n pipe init has failed\n");
     return 1;
   }
-  close(sdr0[WRITE]);
-  close(sdr1[WRITE]);
-  close(sdr2[WRITE]);
-  close(super0[READ]);
-  close(super1[READ]);
-  close(super2[READ]);
   // Initialize mutex
   if(pthread_mutex_init(&file, NULL))
    {
@@ -190,6 +184,12 @@ int main(void)
           exit(1);
         }
       }
+      close(sdr0[WRITE]);
+      close(sdr1[WRITE]);
+      close(sdr2[WRITE]);
+      close(super0[READ]);
+      close(super1[READ]);
+      close(super2[READ]);
 
       // Wait for SDRs to be at collection
       for(i = 0; i < NUM_SDRS; ++i)

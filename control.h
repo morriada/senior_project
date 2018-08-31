@@ -42,7 +42,7 @@
 #define WRITE 1
 
 // Declare variables and structures
-static pthread_mutex_t lock, file;
+static pthread_mutex_t file;
 
 typedef struct rtlsdr_struct {
 	int blocksize;
@@ -57,6 +57,7 @@ struct rtlsdr_struct sdrs[3];
 typedef struct thread_struct {
 	int id;
 	int freq;
+	rtlsdr_dev_t *dev;
 } thread_struct;
 
 /*
@@ -68,7 +69,7 @@ void sdrs_setup(void);
  * rtlsdr_setup - Sets up an individual RTL-SDR at the beginning of the program.
  * @param id ID of RTL-SDR - expecting an integer from 0 to NUM_SDRS
  */
-void rtlsdr_setup(int id, int f);
+void rtlsdr_setup(int id, int f, rtlsdr_dev_t *dev);
 
 /*
  * rtlsdr_bias - Sets bias of Supervisory RTL-SDR for data collection from the
@@ -82,6 +83,6 @@ void rtlsdr_bias(int bias, uint8_t i2c_val);
  * @param id ID of RTL-SDR - expecting an integer from 0 to NUM_SDRS
  * @param f frequency id - expecting an integer from 0 to 3
  */
-void collect(int id, int f);
+void collect(int id, int f, rtlsdr_dev_t *dev);
 
 #endif // SENIOR_PROJECT_CONTROL_H

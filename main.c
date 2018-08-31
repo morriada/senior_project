@@ -36,14 +36,13 @@ extern void rtlsdr_bias(int, uint8_t);
 extern void collect(int, int);
 
 // Initialize variables
-extern pthread_mutex_t lock;
 extern pthread_mutex_t file;
 
 int sdr0[2];
 int sdr1[2];
 int sdr2[2];
 
-int m_time = 100000;
+int m_time = 1000000;
 
 // DSP Thread
 void dodsp(void * ptr)
@@ -57,6 +56,11 @@ void * collect_t(void * ptr)
   struct thread_struct * ts = (struct thread_struct *)ptr;
   int r;
 
+  rtlsdr_open(&(sdrs[ts->id].dev), ts->id);
+  rtlsdr_setup(ts->id, ts->freq);
+  rtlsdr_reset_buffer(sdrs[ts->id].dev);
+  rtlsdr_set_bias_tee(sdrs[ts->id].dev, 1);
+
   // Tell Super thread we're at collection
   int val = 1;
   if (ts->id == 0) {
@@ -66,6 +70,7 @@ void * collect_t(void * ptr)
   } else if (ts->id == 2) {
     write(sdr2[WRITE], &val, 1);
   }
+
   // Wait for Super thread to continue
   int ret = 0;
   if (ts->id == 0) {
@@ -75,8 +80,12 @@ void * collect_t(void * ptr)
   } else if (ts->id == 2) {
     read(sdr2[WRITE], &ret, 1);
   }
+
   // Collect Data
   collect(ts->id, ts->freq);
+
+  // Close RTL-SDR device
+  rtlsdr_close(sdrs[i].dev);
 
   pthread_exit(NULL);
 }
@@ -96,7 +105,7 @@ int main(void)
     return 1;
   }
   // Initialize mutex
-  if(pthread_mutex_init(&lock, NULL) || pthread_mutex_init(&file, NULL))
+  if(pthread_mutex_init(&file, NULL))
    {
     printf("\n mutex init has failed\n");
     return 1;
@@ -106,75 +115,6 @@ int main(void)
   {
     for(n = 0; n < 4; ++n)
     {
-/*      // Open Supervisory Channel
-      rtlsdr_open(&(super.dev), super.id);
-      // Open the 3 RTL-SDRs
-      rtlsdr_open(&(sdrs[2].dev), 2);
-      rtlsdr_open(&(sdrs[1].dev), 1);
-      rtlsdr_open(&(sdrs[0].dev), 0);*/
-      // Change Bias Tee for the 3 RTL-SDRs
-/*      if((r = rtlsdr_set_bias_tee(sdrs[0].dev, 1)) < 0)
-        printf("WARNING: [%d] Failed to set bias tee.\n", r);
-      if((r = rtlsdr_set_bias_tee(sdrs[1].dev, 1)) < 0)
-        printf("WARNING: [%d] Failed to set bias tee.\n", r);
-      if((r = rtlsdr_set_bias_tee(sdrs[2].dev, 1)) < 0)
-        printf("WARNING: [%d] Failed to set bias tee.\n", r);
-      // Set RTL-SDRs Bias for Noise Collection
-      rtlsdr_bias(1, 0x1f);
-*/
-/*      for(i = 0; i < NUM_SDRS; ++i)
-      {
-        // Setup RTL-SDRs
-        rtlsdr_setup(i);
-        // Set RTL-SDRs for desired frequency
-        rtlsdr_freq(i, n);
-        // Reset Buffer
-        if((r = rtlsdr_reset_buffer(sdrs[i].dev)) < 0)
-          printf("WARNING: [%d] Failed to reset buffer.\n", r);
-      }
-*/
-      // Setup RTL-SDRs
-   /*   rtlsdr_setup(2, n);
-      usleep(m_time);
-      rtlsdr_setup(1, n);
-      usleep(m_time);
-      rtlsdr_setup(0, n);
-      usleep(m_time);
-      // Reset Buffer
-      rtlsdr_reset_buffer(sdrs[2].dev);
-      rtlsdr_reset_buffer(sdrs[1].dev);
-      rtlsdr_reset_buffer(sdrs[0].dev);
-*/
-
-      r = rtlsdr_open(&(sdrs[2].dev), 2);
-      printf("rtlsdr_open(2) returned %d.\n", r);
-      rtlsdr_setup(2, n);
-      r = rtlsdr_reset_buffer(sdrs[2].dev);
-      printf("rtlsdr_reset_buffer(2) returned %d.\n", r);
-
-      r = rtlsdr_open(&(sdrs[1].dev), 1);
-      printf("rtlsdr_open(1) returned %d.\n", r);
-      rtlsdr_setup(1, n);
-      r = rtlsdr_reset_buffer(sdrs[1].dev);
-      printf("rtlsdr_reset_buffer(1) returned %d.\n", r);
-
-      r = rtlsdr_open(&(sdrs[0].dev), 0);
-      printf("rtlsdr_open(0) returned %d.\n", r);
-      rtlsdr_setup(0, n);
-      r = rtlsdr_reset_buffer(sdrs[0].dev);
-      printf("rtlsdr_reset_buffer(0) returned %d.\n", r);
-
-      rtlsdr_set_bias_tee(sdrs[2].dev, 1);
-      usleep(m_time);
-      rtlsdr_set_bias_tee(sdrs[1].dev, 1);
-      usleep(m_time);
-      rtlsdr_set_bias_tee(sdrs[0].dev, 1);
-      usleep(m_time);
-
-      rtlsdr_open(&(super.dev), 3);
-
-      rtlsdr_bias(0, 0x1f);
-
       struct thread_struct tmp[3];
 
       // Create a collection thread for each RTL-SDR
@@ -205,6 +145,12 @@ int main(void)
           }
         }
       }
+
+      // Open Supervisory SDR
+      rtlsdr_open(&(super.dev), 3);
+      // Change Bias Tee
+      rtlsdr_bias(0, 0x1f);
+
       // Tell threads to continue
       ret = 1;
       for(i = 0; i < NUM_SDRS; ++i)
@@ -219,7 +165,7 @@ int main(void)
       }
 
       // Sleep for 100 milliseconds
-      sleep(1);
+      usleep(m_time);
       // Switch RTL-SDRs Bias for Data Collection
       rtlsdr_bias(0, 0x00);
 
@@ -230,8 +176,6 @@ int main(void)
           //fprintf(stderr, "Error joining thread\n");
           exit(1);
         }
-        // Close RTL-SDR device
-        rtlsdr_close(sdrs[i].dev);
       }
       // Close Supervisory Channel
       rtlsdr_close(super.dev);
@@ -239,7 +183,6 @@ int main(void)
   }
 
   // Destroy mutex
-  pthread_mutex_destroy(&lock);
   pthread_mutex_destroy(&file);
 
   return 0;

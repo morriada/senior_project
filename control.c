@@ -44,7 +44,8 @@ void sdrs_setup(void)
 		// Initialize Variables
 		sdrs[i].id = i;
 		sdrs[i].blocksize = BSIZE;
-		sdrs[i].buffer = calloc(BSIZE, sizeof(uint8_t));
+		sdrs[i].buffer0 = calloc(BSIZE, sizeof(uint8_t));
+		sdrs[i].buffer1 = calloc(BSIZE, sizeof(uint8_t));
 		sdrs[i].collection_t = (pthread_t)malloc(sizeof(pthread_t));
 		sdrs[i].initialize_t = (pthread_t)malloc(sizeof(pthread_t));
 	}

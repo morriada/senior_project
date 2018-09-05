@@ -95,7 +95,8 @@ void file_save(int sdr_num, int f)
 					sdr_num, freq[f], yr, mon, day, hr, min, sec);
 	pthread_mutex_lock(&file);
 	fp = fopen(path, "wb");
-	fwrite(sdrs[sdr_num].buffer, 1, BSIZE, fp);
+	fwrite(sdrs[sdr_num].buffer0, 1, BSIZE, fp);
+	fwrite(sdrs[sdr_num].buffer1, 1, BSIZE, fp);
 	fclose(fp);
 	pthread_mutex_unlock(&file);
 }
@@ -109,7 +110,19 @@ void collect(int id, int f, rtlsdr_dev_t *dev)
 	ret = n_read = 0;
 	blocksize = sdrs[id].blocksize;
 
-	ret = rtlsdr_read_sync(dev, sdrs[id].buffer, blocksize, &n_read);
+	ret = rtlsdr_read_sync(dev, sdrs[id].buffer0, blocksize, &n_read);
+
+	// Check for errors
+	if(ret < 0) {
+		fprintf(stderr, "Runtime error: %d at %s:%d\n", ret, __FILE__, __LINE__);
+	} else if(n_read < blocksize) {
+		fprintf(stderr, "Short read sdr: %d: %d/%d ret: %d\n", id, n_read, blocksize, ret);
+	} else {
+		fprintf(stderr, "Read %d\n", id);
+	}
+
+	ret = n_read = 0;
+	ret = rtlsdr_read_sync(dev, sdrs[id].buffer1, blocksize, &n_read);
 
 	// Check for errors
 	if(ret < 0) {

@@ -47,7 +47,7 @@ static pthread_mutex_t file;
 typedef struct rtlsdr_struct {
 	int blocksize;
 	uint32_t id;
-	uint8_t *buffer;
+	uint8_t *buffer0, *buffer1;
 	rtlsdr_dev_t *dev;
 	pthread_t collection_t, initialize_t;
 } rtlsdr_struct;

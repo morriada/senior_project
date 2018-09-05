@@ -65,7 +65,6 @@ void * collect_t(void * ptr)
   } else if (ts->id == 2) {
     write(sdr2[WRITE], &val, 1);
   }
-printf("Here %d\n", ts->id);
   // Wait for Super thread to continue
   int ret = 1;
   while(ret)
@@ -149,7 +148,6 @@ int main(void)
       rtlsdr_open(&(super.dev), 3);
       rtlsdr_bias(0, 0x1f);
 
-
       // Create a collection thread for each RTL-SDR
       for(i = 0; i < NUM_SDRS; ++i)
       {
@@ -176,7 +174,6 @@ int main(void)
           }
         }
       }
-printf("Here\n");
       // Tell threads to continue
       ret = 0;
       for(i = 0; i < NUM_SDRS; ++i)
@@ -191,7 +188,7 @@ printf("Here\n");
       }
 
       // Sleep for 100 milliseconds
-      sleep(1);
+      usleep(10000);
       // Switch RTL-SDRs Bias for Data Collection
       rtlsdr_bias(0, 0x00);
 

@@ -176,19 +176,12 @@ int main(void)
       }
       // Tell threads to continue
       ret = 0;
-      for(i = 0; i < NUM_SDRS; ++i)
-      {
-        if (i == 0) {
-          write(sdr0[WRITE], &ret, 1);
-        } else if (i == 1) {
-          write(sdr1[WRITE], &ret, 1);
-        } else if (i == 2) {
-          write(sdr2[WRITE], &ret, 1);
-        }
-      }
+      write(sdr0[WRITE], &ret, 1);
+      write(sdr1[WRITE], &ret, 1);
+      write(sdr2[WRITE], &ret, 1);
 
       // Sleep for 100 milliseconds
-      usleep(10000);
+      usleep(100000);
       // Switch RTL-SDRs Bias for Data Collection
       rtlsdr_bias(0, 0x00);
 

@@ -142,7 +142,7 @@ int main(void)
       {
         if(pthread_join(sdrs[i].initialize_t, NULL)) {
 	         exit(1);
-	      }
+        }
       }
 
       rtlsdr_open(&(super.dev), 3);
@@ -153,7 +153,7 @@ int main(void)
       {
         struct thread_struct * ts = &tmp[i];
         if(pthread_create(&(sdrs[i].collection_t), NULL, collect_t, (void *)ts)) {
-          //fprintf(stderr, "Error creating thread\n");
+          fprintf(stderr, "Error creating thread\n");
           exit(1);
         }
       }
@@ -189,7 +189,7 @@ int main(void)
       for(i = 0; i < NUM_SDRS; ++i)
       {
         if(pthread_join(sdrs[i].collection_t, NULL)) {
-          //fprintf(stderr, "Error joining thread\n");
+          fprintf(stderr, "Error joining thread\n");
           exit(1);
         }
         // Close RTL-SDR device

@@ -65,6 +65,7 @@ void * collect_t(void * ptr)
   } else if (ts->id == 2) {
     write(sdr2[WRITE], &val, 1);
   }
+  printf("here %d\n", ts->id);
   // Wait for Super thread to continue
   int ret = 1;
   while(ret)
@@ -94,7 +95,6 @@ void * init_t(void * ptr)
   rtlsdr_setup(ts->id, ts->freq, dev);
   rtlsdr_reset_buffer(dev);
   rtlsdr_set_bias_tee(dev, 1);
-  sleep(2);
 
   pthread_exit(NULL);
 }

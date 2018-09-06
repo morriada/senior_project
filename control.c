@@ -44,8 +44,8 @@ void sdrs_setup(void)
 		// Initialize Variables
 		sdrs[i].id = i;
 		sdrs[i].blocksize = BSIZE;
-		sdrs[i].buffer0 = calloc(BSIZE, sizeof(uint8_t));
-		sdrs[i].buffer1 = calloc(BSIZE, sizeof(uint8_t));
+		sdrs[i].buffer[0] = calloc(BSIZE, sizeof(uint8_t));
+		sdrs[i].buffer[1] = calloc(BSIZE, sizeof(uint8_t));
 		sdrs[i].collection_t = (pthread_t)malloc(sizeof(pthread_t));
 		sdrs[i].initialize_t = (pthread_t)malloc(sizeof(pthread_t));
 	}
@@ -55,7 +55,7 @@ void sdrs_setup(void)
 
 void rtlsdr_setup(int id, int f, rtlsdr_dev_t *dev)
 {
-	int r, time = 500000;
+	int r;
 	// Set the sample rate of the rtl-sdr
 	if((r = rtlsdr_set_sample_rate(dev, sample_rate)) < 0)
 		printf("WARNING: [%d] Failed to set sample rate.\n", r);
@@ -68,7 +68,6 @@ void rtlsdr_setup(int id, int f, rtlsdr_dev_t *dev)
 	// Set the center frequency
 	if((r = rtlsdr_set_center_freq(dev, freq[f])) < 0)
 		printf("WARNING: [%d] Failed to set if frequency.\n", r);
-	sleep(2);
 	// Set the tuner gain mode to automatic
 	if((r = rtlsdr_set_tuner_gain_mode(dev, auto_gain)) < 0)
 		printf("WARNING: [%d] Failed to set tuner gain.\n", r);
@@ -96,8 +95,8 @@ void file_save(int sdr_num, int f)
 					sdr_num, freq[f], yr, mon, day, hr, min, sec);
 	pthread_mutex_lock(&file);
 	fp = fopen(path, "wb");
-	fwrite(sdrs[sdr_num].buffer0, 1, BSIZE, fp);
-	fwrite(sdrs[sdr_num].buffer1, 1, BSIZE, fp);
+	fwrite(sdrs[sdr_num].buffer[0], 1, BSIZE, fp);
+	fwrite(sdrs[sdr_num].buffer[1], 1, BSIZE, fp);
 	fclose(fp);
 	pthread_mutex_unlock(&file);
 }
@@ -105,33 +104,23 @@ void file_save(int sdr_num, int f)
 void collect(int id, int f, rtlsdr_dev_t *dev)
 {
 	// Initialize collection variables
-	int ret, blocksize, n_read;
+	int ret, blocksize, n_read, idx;
 
 	// Collect data from all RTL-SDRs
-	ret = n_read = 0;
-	blocksize = sdrs[id].blocksize;
+	for(idx = 0; idx < 2; ++idx){
+		ret = n_read = 0;
+		blocksize = sdrs[id].blocksize;
 
-	ret = rtlsdr_read_sync(dev, sdrs[id].buffer0, blocksize, &n_read);
+		ret = rtlsdr_read_sync(dev, sdrs[id].buffer[idx], blocksize, &n_read);
 
-	// Check for errors
-	if(ret < 0) {
-		fprintf(stderr, "Runtime error: %d at %s:%d\n", ret, __FILE__, __LINE__);
-	} else if(n_read < blocksize) {
-		fprintf(stderr, "Short read sdr: %d: %d/%d ret: %d\n", id, n_read, blocksize, ret);
-	} else {
-		fprintf(stderr, "Read %d\n", id);
-	}
-
-	ret = n_read = 0;
-	ret = rtlsdr_read_sync(dev, sdrs[id].buffer1, blocksize, &n_read);
-
-	// Check for errors
-	if(ret < 0) {
-		fprintf(stderr, "Runtime error: %d at %s:%d\n", ret, __FILE__, __LINE__);
-	} else if(n_read < blocksize) {
-		fprintf(stderr, "Short read sdr: %d: %d/%d ret: %d\n", id, n_read, blocksize, ret);
-	} else {
-		fprintf(stderr, "Read %d\n", id);
+		// Check for errors
+		if(ret < 0) {
+			fprintf(stderr, "Runtime error: %d at %s:%d\n", ret, __FILE__, __LINE__);
+		} else if(n_read < blocksize) {
+			fprintf(stderr, "Short read sdr: %d: %d/%d ret: %d\n", id, n_read, blocksize, ret);
+		} else {
+			fprintf(stderr, "Read %d:%d\n", id, idx);
+		}
 	}
 
 	// Save data to file

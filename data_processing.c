@@ -327,28 +327,31 @@ void fft_init(void)
 int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data)
 {
     int i, j, k;
-
     uint8_t *buf1 = SDR1_data;
     fftw_complex *floatbuf1 = fft1in;
     j = 0;
-    for(i = 0; i < SAMPLE_LENGTH; i++)
-        floatbuf1[i] = (buf1[j++] + I*buf1[j++]) - (127.4f+127.4f*I);
-    //
-
+    for(i = 0; i < SAMPLE_LENGTH; i++) {
+        floatbuf1[i] = (buf1[j] + I*buf1[j+1]) - (127.4f+127.4f*I);
+        j += 2;
+    }
     fftw_execute(fft1plan);
 
     uint8_t *buf2 = SDR2_data;
     fftw_complex *floatbuf2 = fft2in;
     j = 0;
-    for(i = 0; i < SAMPLE_LENGTH; i++)
-        floatbuf2[i] = (buf2[j++] + I*buf2[j++]) - (127.4f+127.4f*I);
+    for(i = 0; i < SAMPLE_LENGTH; i++) {
+        floatbuf2[i] = (buf2[j] + I*buf2[j+1]) - (127.4f+127.4f*I);
+	j += 2;
+    }
     fftw_execute(fft2plan);
 
     uint8_t *buf3 = SDR3_data;
     fftw_complex *floatbuf3 = fft3in;
     j = 0;
-    for(i = 0; i < SAMPLE_LENGTH; i++)
-        floatbuf3[i] = (buf3[j++] + I*buf3[j++]) - (127.4f+127.4f*I);
+    for(i = 0; i < SAMPLE_LENGTH; i++) {
+        floatbuf3[i] = (buf3[j] + I*buf3[j+1]) - (127.4f+127.4f*I);
+        j += 2;
+    }
     fftw_execute(fft3plan);
 
     //Process the outputs
@@ -465,23 +468,28 @@ void findPhaseDifference(uint8_t *SDR1_cal, uint8_t *SDR2_cal, uint8_t *SDR3_cal
     fftw_complex *floatbuf1;
     floatbuf1 = fftw_malloc( CALIBRATION_LENGTH * sizeof(*floatbuf1));
     j = 0;
-    for(i = 0; i < CALIBRATION_LENGTH; i++)
-        floatbuf1[i] = (buf1[j++] + I*buf1[j++]) - (127.4f+127.4f*I);
+    for(i = 0; i < CALIBRATION_LENGTH; i++) {
+        floatbuf1[i] = (buf1[j] + I*buf1[j+1]) - (127.4f+127.4f*I);
+        j += 2;
+    }
 
     uint8_t *buf2 = SDR2_cal;
     fftw_complex *floatbuf2;
     floatbuf2 = fftw_malloc(CALIBRATION_LENGTH * sizeof(*floatbuf2));
     j = 0;
     for(i = 0; i < CALIBRATION_LENGTH; i++){
-        floatbuf2[i] = (buf2[j++] + I*buf2[j++]) - (127.4f+127.4f*I);
+        floatbuf2[i] = (buf2[j] + I*buf2[j+1]) - (127.4f+127.4f*I);
+        j += 2;
     }
 
     uint8_t *buf3 = SDR3_cal;
     fftw_complex *floatbuf3;
     floatbuf3 = fftw_malloc(CALIBRATION_LENGTH * sizeof(*floatbuf3));
     j = 0;
-    for(i = 0; i < CALIBRATION_LENGTH; i++)
-        floatbuf3[i] = (buf3[j++] + I*buf3[j++]) - (127.4f+127.4f*I);
+    for(i = 0; i < CALIBRATION_LENGTH; i++) {
+        floatbuf3[i] = (buf3[j] + I*buf3[j+1]) - (127.4f+127.4f*I);
+        j += 2;
+    }
 
 
     xcorr(floatbuf1, floatbuf3, resultAC, CALIBRATION_LENGTH);

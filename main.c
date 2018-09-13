@@ -48,9 +48,9 @@ int m_time = 100000;
 void * dodsp(void * ptr)
 {
   // Initialize
-  uint8_t * sdr0Data = malloc((2*SAMPLE_LENGTH)* sizeof(*sdr0Data));
-  uint8_t * sdr1Data = malloc((2*SAMPLE_LENGTH)* sizeof(*sdr0Data));
-  uint8_t * sdr2Data = malloc((2*SAMPLE_LENGTH)* sizeof(*sdr0Data));
+  uint8_t * sdr0Data = malloc(2*BSIZE);
+  uint8_t * sdr1Data = malloc(2*BSIZE);
+  uint8_t * sdr2Data = malloc(2*BSIZE);
 
   memcpy(sdr0Data, sdrs[0].buffer[0], BSIZE);
   memcpy(sdr0Data + BSIZE, sdrs[0].buffer[1], BSIZE);

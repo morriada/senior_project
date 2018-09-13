@@ -447,11 +447,21 @@ int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data)
     }
     findSignal();
 
+    fftw_destroy_plan(fft1plan);
+    fftw_destroy_plan(fft2plan);
+    fftw_destroy_plan(fft3plan);
+
+    fftw_free(fft1in);
+    fftw_free(fft2in);
+    fftw_free(fft3in);
+    fftw_free(fft1out);
+    fftw_free(fft2out);
+    fftw_free(fft3out);
+
     for(i = 0; i < NUM_BANDS; i++)
         printf("Band %d: %f\n", i, angleOfArrival[i]);
 
     return 0;
-
 }
 
 void findPhaseDifference(uint8_t *SDR1_cal, uint8_t *SDR2_cal, uint8_t *SDR3_cal)

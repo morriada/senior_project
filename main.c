@@ -66,6 +66,10 @@ void * dodsp(void * ptr)
   // Find Signal in the Data Haystack
   DSP(sdr0Data, sdr1Data, sdr2Data);
 
+  free(sdr0Data);
+  free(sdr1Data);
+  free(sdr2Data);
+
   pthread_exit(NULL);
 }
 
@@ -166,6 +170,8 @@ int main(void)
 
       rtlsdr_open(&(super.dev), 3);
       rtlsdr_bias(0, 0x1f);
+
+      printf("Frequency: %d\n", freq[n]);
 
       // Create a collection thread for each RTL-SDR
       for(i = 0; i < NUM_SDRS; ++i)

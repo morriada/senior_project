@@ -447,10 +447,10 @@ int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data)
     }
     findSignal();
 
-    fftw_destroy_plan(fft1plan);
+/*    fftw_destroy_plan(fft1plan);
     fftw_destroy_plan(fft2plan);
     fftw_destroy_plan(fft3plan);
-
+*/
     fftw_free(fft1in);
     fftw_free(fft2in);
     fftw_free(fft3in);
@@ -539,6 +539,11 @@ void findPhaseDifference(uint8_t *SDR1_cal, uint8_t *SDR2_cal, uint8_t *SDR3_cal
     else if(cimagf(resultBC[locBC]) < 0 && crealf(resultBC[locBC]) < 0)
         phaseCorrectionBC = (phaseCorrectionBC * -1.0) - 90.0;
 
+    fftw_free(resultAC);
+    fftw_free(resultBC);
+    fftw_free(floatbuf1);
+    fftw_free(floatbuf2);
+    fftw_free(floatbuf3);
 }
 /*
 int main(){

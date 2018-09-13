@@ -60,6 +60,8 @@ typedef struct thread_struct {
 	rtlsdr_dev_t *dev;
 } thread_struct;
 
+extern volatile uint32_t freq[4];
+
 /*
  * sdrs_setup - Initializes the structures for each RTL-SDR.
  */

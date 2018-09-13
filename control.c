@@ -21,7 +21,7 @@
 #include "control.h"
 
 // Declare variables
-static volatile uint32_t freq[] = {
+volatile uint32_t freq[] = {
 	148000000,
 	149000000,
 	150000000,

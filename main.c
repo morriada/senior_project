@@ -66,6 +66,9 @@ void * dodsp(void * ptr)
   // Find Signal in the Data Haystack
   DSP(sdr0Data, sdr1Data, sdr2Data);
 
+  for(i = 0; i < NUM_BANDS; i++)
+      printf("Band %d: %f\n", i, angleOfArrival[i]);
+
   pthread_exit(NULL);
 }
 

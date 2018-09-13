@@ -444,6 +444,9 @@ int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data)
     }
     findSignal();
 
+    for(i = 0; i < NUM_BANDS; i++)
+        printf("Band %d: %f\n", i, angleOfArrival[i]);
+
     return 0;
 
 }

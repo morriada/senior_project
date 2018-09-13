@@ -238,5 +238,8 @@ int main(void)
   // Destroy mutex
   pthread_mutex_destroy(&file);
 
+  // Free Space
+  free_controls();
+
   return 0;
 }

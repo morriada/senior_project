@@ -53,6 +53,17 @@ void sdrs_setup(void)
 	super.blocksize = 0;
 }
 
+void free_controls(void)
+{
+	for(i = 0; i < NUM_SDRS; ++i)
+	{
+		free((void *)sdrs[i].buffer[0]);
+		free((void *)sdrs[i].buffer[1]);
+		free((void *)sdrs[i].collection_t);
+		free((void *)sdrs[i].initialize_t);
+	}
+}
+
 void rtlsdr_setup(int id, int f, rtlsdr_dev_t *dev)
 {
 	int r;

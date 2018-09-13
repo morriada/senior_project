@@ -68,6 +68,11 @@ extern volatile uint32_t freq[4];
 void sdrs_setup(void);
 
 /*
+ * free_controls - Free malloc'd variables.
+ */
+void free_controls(void);
+
+/*
  * rtlsdr_setup - Sets up an individual RTL-SDR at the beginning of the program.
  * @param id ID of RTL-SDR - expecting an integer from 0 to NUM_SDRS
  */

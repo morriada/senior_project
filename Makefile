@@ -13,10 +13,10 @@ SRC_EXT = c
 # Path to the source directory, relative to makefile
 SRC_PATH = ./
 # General compiler flags
-COMPILE_FLAGS = -Wall -Wextra -O3 -lm -ffast-math -lrtlsdr -lpthread -lfftw3f -g -o
+COMPILE_FLAGS = -Wall -Wextra -O3 -lm -ffast-math -lrtlsdr -lpthread -lfftw3 -g -o
 
-all: main.c control.c
-	$(CC) $(COMPILE_FLAGS) $(BIN_NAME) main.c control.c
+all: main.c control.c data_processing.c
+	$(CC) $(COMPILE_FLAGS) $(BIN_NAME) main.c control.c data_processing.c
 
 .PHONY: clean
 clean:

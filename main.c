@@ -27,7 +27,7 @@
 
 // Include Project Libraries
 #include "control.h"
-//#include "data_processing.h"
+#include "data_processing.h"
 
 // Include external functions
 extern void sdrs_setup(void);
@@ -45,16 +45,34 @@ int sdr2[2];
 int m_time = 100000;
 
 // DSP Thread
-void dodsp(void * ptr)
+void * dodsp(void * ptr)
 {
-  //
+  // Initialize
+  uint8_t * sdr0Data = malloc((2*SAMPLE_LENGTH)* sizeof(*sdr0Data));
+  uint8_t * sdr1Data = malloc((2*SAMPLE_LENGTH)* sizeof(*sdr0Data));
+  uint8_t * sdr2Data = malloc((2*SAMPLE_LENGTH)* sizeof(*sdr0Data));
+
+  memcpy(sdr0Data, sdrs[0].buffer[0], BSIZE);
+  memcpy(sdr0Data + BSIZE, sdrs[0].buffer[1], BSIZE);
+  memcpy(sdr1Data, sdrs[1].buffer[0], BSIZE);
+  memcpy(sdr1Data + BSIZE, sdrs[1].buffer[1], BSIZE);
+  memcpy(sdr2Data, sdrs[2].buffer[0], BSIZE);
+  memcpy(sdr2Data + BSIZE, sdrs[2].buffer[1], BSIZE);
+
+  fft_init();
+  correlateInit();
+  // Find Phase Difference
+  findPhaseDifference(sdr0Data, sdr1Data, sdr2Data);
+  // Find Signal in the Data Haystack
+  DSP(sdr0Data, sdr1Data, sdr2Data);
+
+  pthread_exit(NULL);
 }
 
 // Individual SDR Collection Thread
 void * collect_t(void * ptr)
 {
   struct thread_struct * ts = (struct thread_struct *)ptr;
-  int r;
 
   // Tell Super thread we're at collection
   int val = 1;
@@ -104,7 +122,8 @@ void * init_t(void * ptr)
 int main(void)
 {
   // Declare variables
-  int i, n, r;
+  int i, n;
+  pthread_t dsp = (pthread_t)malloc(sizeof(pthread_t));
   // Prepare structures
   sdrs_setup();
   // Initialize pipes
@@ -197,6 +216,16 @@ int main(void)
       }
       // Close Supervisory Channel
       rtlsdr_close(super.dev);
+
+      // Perform DSP
+      if(pthread_create(&dsp, NULL, dodsp, (void *)NULL)) {
+        fprintf(stderr, "Error creating thread\n");
+        exit(1);
+      }
+      if(pthread_join(dsp, NULL)) {
+        fprintf(stderr, "Error joining thread\n");
+        exit(1);
+      }
     }
   }
 

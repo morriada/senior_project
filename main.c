@@ -31,9 +31,9 @@
 
 // Include external functions
 extern void sdrs_setup(void);
-extern void rtlsdr_setup(int, int, rtlsdr_dev_t *);
+extern void rtlsdr_setup(int, rtlsdr_dev_t *);
 extern void rtlsdr_bias(int, uint8_t);
-extern void collect(int, int, rtlsdr_dev_t *);
+extern void collect(int, /*int,*/ rtlsdr_dev_t *);
 
 // Initialize variables
 extern pthread_mutex_t file;
@@ -101,7 +101,7 @@ void * collect_t(void * ptr)
     }
   }
   // Collect Data
-  collect(ts->id, ts->freq, ts->dev);
+  collect(ts->id, /*ts->freq,*/ ts->dev);
 
   pthread_exit(NULL);
 }
@@ -114,7 +114,7 @@ void * init_t(void * ptr)
   rtlsdr_open(&dev, ts->id);
   ts->dev = dev;
   sdrs[ts->id].dev = dev;
-  rtlsdr_setup(ts->id, ts->freq, dev);
+  rtlsdr_setup(ts->freq, dev);
   rtlsdr_reset_buffer(dev);
   rtlsdr_set_bias_tee(dev, 1);
 

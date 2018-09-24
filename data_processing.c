@@ -22,9 +22,7 @@
 #define numFFTs ( SAMPLE_TIME / FFT_TIME )
 #define distance ( SAMPLE_LENGTH / numFFTs )
 
-static int nreceivers = 0, corrlen = 0, fft1n = 0, fft2n = 0;
-
-static int sync_debug = 1;
+static int fft1n = 0, fft2n = 0;
 
 static fftw_complex *fft1in, *fft1out, *fft2in, *fft2out, *fft3in, *fft3out;
 static fftw_plan fft1plan, fft2plan, fft3plan;
@@ -353,7 +351,7 @@ int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data)
         j += 2;
     }
     fftw_execute(fft3plan);
-
+printf("%f\n", crealf(fft3out[SAMPLE_LENGTH-1]));
     //Process the outputs
     //Loop through every FFT taken
     for(i = 0; i < numFFTs; i++){

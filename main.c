@@ -41,8 +41,11 @@ extern pthread_mutex_t file;
 int sdr0[2];
 int sdr1[2];
 int sdr2[2];
+int super0[2];
+int super1[2];
+int super2[2];
 
-int m_time = 100000;
+int m_time = 1000000;
 
 // DSP Thread
 void * dodsp(void * ptr)
@@ -131,7 +134,8 @@ int main(void)
   // Prepare structures
   sdrs_setup();
   // Initialize pipes
-  if((pipe(sdr0) < 0) || (pipe(sdr1) < 0) || (pipe(sdr2) < 0))
+  if((pipe(sdr0) < 0) || (pipe(sdr1) < 0) || (pipe(sdr2) < 0)
+    || (pipe(super0) < 0) || (pipe(super1) < 0) || (pipe(super2) < 0))
   {
     printf("\n pipe init has failed\n");
     return 1;
@@ -173,6 +177,11 @@ int main(void)
 
       printf("Frequency: %d\n", freq[n]);
 
+      int ret = 0;
+      write(super0[WRITE], &ret, 1);
+      write(super1[WRITE], &ret, 1);
+      write(super2[WRITE], &ret, 1);
+
       // Create a collection thread for each RTL-SDR
       for(i = 0; i < NUM_SDRS; ++i)
       {
@@ -181,10 +190,15 @@ int main(void)
           fprintf(stderr, "Error creating thread\n");
           exit(1);
         }
-      }
-
+      }/*
+      close(sdr0[WRITE]);
+      close(sdr1[WRITE]);
+      close(sdr2[WRITE]);
+      close(super0[READ]);
+      close(super1[READ]);
+      close(super2[READ]);
+*/
       // Wait for SDRs to be at collection
-      int ret;
       for(i = 0; i < NUM_SDRS; ++i)
       {
         ret = 0;
@@ -199,6 +213,12 @@ int main(void)
           }
         }
       }
+
+      // Open Supervisory SDR
+      rtlsdr_open(&(super.dev), 3);
+      // Change Bias Tee
+      rtlsdr_bias(0, 0x1f);
+
       // Tell threads to continue
       ret = 0;
       write(sdr0[WRITE], &ret, 1);
@@ -217,8 +237,6 @@ int main(void)
           fprintf(stderr, "Error joining thread\n");
           exit(1);
         }
-        // Close RTL-SDR device
-        rtlsdr_close(sdrs[i].dev);
       }
       // Close Supervisory Channel
       rtlsdr_close(super.dev);

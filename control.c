@@ -28,7 +28,7 @@ volatile uint32_t freq[] = {
 	151000000
 };
 
-int i;
+int i, c_time = 50000;
 int auto_gain = 0;
 int disable_dither = 0;
 int i2c_repeater_on = 1;

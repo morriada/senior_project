@@ -27,13 +27,13 @@
 
 // Include Project Libraries
 #include "control.h"
-//#include "data_processing.h"
+#include "data_processing.h"
 
 // Include external functions
 extern void sdrs_setup(void);
-extern void rtlsdr_setup(int, int);
+extern void rtlsdr_setup(int, rtlsdr_dev_t *);
 extern void rtlsdr_bias(int, uint8_t);
-extern void collect(int, int);
+extern void collect(int, /*int,*/ rtlsdr_dev_t *);
 
 // Initialize variables
 extern pthread_mutex_t file;
@@ -48,56 +48,38 @@ int super2[2];
 int m_time = 1000000;
 
 // DSP Thread
-void dodsp(void * ptr)
+void * dodsp(void * ptr)
 {
-  //
+  // Initialize
+  uint8_t * sdr0Data = malloc(2*BSIZE);
+  uint8_t * sdr1Data = malloc(2*BSIZE);
+  uint8_t * sdr2Data = malloc(2*BSIZE);
+
+  memcpy(sdr0Data, sdrs[0].buffer[0], BSIZE);
+  memcpy(sdr0Data + BSIZE, sdrs[0].buffer[1], BSIZE);
+  memcpy(sdr1Data, sdrs[1].buffer[0], BSIZE);
+  memcpy(sdr1Data + BSIZE, sdrs[1].buffer[1], BSIZE);
+  memcpy(sdr2Data, sdrs[2].buffer[0], BSIZE);
+  memcpy(sdr2Data + BSIZE, sdrs[2].buffer[1], BSIZE);
+
+  fft_init();
+  correlateInit();
+  // Find Phase Difference
+  findPhaseDifference(sdr0Data, sdr1Data, sdr2Data);
+  // Find Signal in the Data Haystack
+  DSP(sdr0Data, sdr1Data, sdr2Data);
+
+  free(sdr0Data);
+  free(sdr1Data);
+  free(sdr2Data);
+
+  pthread_exit(NULL);
 }
 
 // Individual SDR Collection Thread
 void * collect_t(void * ptr)
 {
   struct thread_struct * ts = (struct thread_struct *)ptr;
-  int r;
-/*
-  if (ts->id == 0) {
-    close(sdr0[READ]);
-    close(sdr1[READ]);
-    close(sdr1[WRITE]);
-    close(sdr2[READ]);
-    close(sdr2[WRITE]);
-    close(super0[WRITE]);
-    close(super1[READ]);
-    close(super1[WRITE]);
-    close(super2[READ]);
-    close(super2[WRITE]);
-  } else if (ts->id == 1) {
-    close(sdr0[READ]);
-    close(sdr0[WRITE]);
-    close(sdr1[READ]);
-    close(sdr2[READ]);
-    close(sdr2[WRITE]);
-    close(super0[READ]);
-    close(super0[WRITE]);
-    close(super1[WRITE]);
-    close(super2[READ]);
-    close(super2[WRITE]);
-  } else if (ts->id == 2) {
-    close(sdr0[READ]);
-    close(sdr0[WRITE]);
-    close(sdr1[READ]);
-    close(sdr1[WRITE]);
-    close(sdr2[READ]);
-    close(super0[READ]);
-    close(super0[WRITE]);
-    close(super1[READ]);
-    close(super1[WRITE]);
-    close(super2[WRITE]);
-  }
-*/
-  rtlsdr_open(&(sdrs[ts->id].dev), ts->id);
-  rtlsdr_setup(ts->id, ts->freq);
-  rtlsdr_reset_buffer(sdrs[ts->id].dev);
-  rtlsdr_set_bias_tee(sdrs[ts->id].dev, 1);
 
   // Tell Super thread we're at collection
   int val = 1;
@@ -108,34 +90,36 @@ void * collect_t(void * ptr)
   } else if (ts->id == 2) {
     write(sdr2[WRITE], &val, 1);
   }
-
+  printf("here %d\n", ts->id);
   // Wait for Super thread to continue
-  int ret = 0;
-  while(!ret)
+  int ret = 1;
+  while(ret)
   {
     if (ts->id == 0) {
-      read(super0[READ], &ret, 1);
+      read(sdr0[READ], &ret, 1);
     } else if (ts->id == 1) {
-      read(super1[READ], &ret, 1);
+      read(sdr1[READ], &ret, 1);
     } else if (ts->id == 2) {
-      read(super2[READ], &ret, 1);
+      read(sdr2[READ], &ret, 1);
     }
   }
-
   // Collect Data
-  collect(ts->id, ts->freq);
+  collect(ts->id, /*ts->freq,*/ ts->dev);
 
-  // Close RTL-SDR device
-  rtlsdr_close(sdrs[ts->id].dev);
+  pthread_exit(NULL);
+}
 
-  val = 0;
-  if (ts->id == 0) {
-    write(sdr0[WRITE], &val, 1);
-  } else if (ts->id == 1) {
-    write(sdr1[WRITE], &val, 1);
-  } else if (ts->id == 2) {
-    write(sdr2[WRITE], &val, 1);
-  }
+void * init_t(void * ptr)
+{
+  struct thread_struct * ts = (struct thread_struct *)ptr;
+  rtlsdr_dev_t *dev = NULL;
+
+  rtlsdr_open(&dev, ts->id);
+  ts->dev = dev;
+  sdrs[ts->id].dev = dev;
+  rtlsdr_setup(ts->freq, dev);
+  rtlsdr_reset_buffer(dev);
+  rtlsdr_set_bias_tee(dev, 1);
 
   pthread_exit(NULL);
 }
@@ -145,7 +129,8 @@ void * collect_t(void * ptr)
 int main(void)
 {
   // Declare variables
-  int i, n, r;
+  int i, n;
+  pthread_t dsp = (pthread_t)malloc(sizeof(pthread_t));
   // Prepare structures
   sdrs_setup();
   // Initialize pipes
@@ -168,6 +153,30 @@ int main(void)
     {
       struct thread_struct tmp[3];
 
+      for(i = 0; i < NUM_SDRS; ++i)
+      {
+        rtlsdr_dev_t *dev = NULL;
+        tmp[i].id = i;
+        tmp[i].freq = n;
+        tmp[i].dev = dev;
+        struct thread_struct * ts = &tmp[i];
+        if(pthread_create(&(sdrs[i].initialize_t), NULL, init_t, (void *)ts)) {
+          exit(1);
+        }
+      }
+
+      for(i = 0; i < NUM_SDRS; ++i)
+      {
+        if(pthread_join(sdrs[i].initialize_t, NULL)) {
+	         exit(1);
+        }
+      }
+
+      rtlsdr_open(&(super.dev), 3);
+      rtlsdr_bias(0, 0x1f);
+
+      printf("Frequency: %d\n", freq[n]);
+
       int ret = 0;
       write(super0[WRITE], &ret, 1);
       write(super1[WRITE], &ret, 1);
@@ -176,11 +185,9 @@ int main(void)
       // Create a collection thread for each RTL-SDR
       for(i = 0; i < NUM_SDRS; ++i)
       {
-        tmp[i].id = i;
-        tmp[i].freq = n;
         struct thread_struct * ts = &tmp[i];
         if(pthread_create(&(sdrs[i].collection_t), NULL, collect_t, (void *)ts)) {
-          //fprintf(stderr, "Error creating thread\n");
+          fprintf(stderr, "Error creating thread\n");
           exit(1);
         }
       }/*
@@ -213,13 +220,13 @@ int main(void)
       rtlsdr_bias(0, 0x1f);
 
       // Tell threads to continue
-      ret = 1;
-      write(super0[WRITE], &ret, 1);
-      write(super1[WRITE], &ret, 1);
-      write(super2[WRITE], &ret, 1);
+      ret = 0;
+      write(sdr0[WRITE], &ret, 1);
+      write(sdr1[WRITE], &ret, 1);
+      write(sdr2[WRITE], &ret, 1);
 
       // Sleep for 100 milliseconds
-      usleep(m_time);
+      usleep(100000);
       // Switch RTL-SDRs Bias for Data Collection
       rtlsdr_bias(0, 0x00);
 
@@ -227,17 +234,30 @@ int main(void)
       for(i = 0; i < NUM_SDRS; ++i)
       {
         if(pthread_join(sdrs[i].collection_t, NULL)) {
-          //fprintf(stderr, "Error joining thread\n");
+          fprintf(stderr, "Error joining thread\n");
           exit(1);
         }
       }
       // Close Supervisory Channel
       rtlsdr_close(super.dev);
+
+      // Perform DSP
+      if(pthread_create(&dsp, NULL, dodsp, (void *)NULL)) {
+        fprintf(stderr, "Error creating thread\n");
+        exit(1);
+      }
+      if(pthread_join(dsp, NULL)) {
+        fprintf(stderr, "Error joining thread\n");
+        exit(1);
+      }
     }
   }
 
   // Destroy mutex
   pthread_mutex_destroy(&file);
+
+  // Free Space
+  free_controls();
 
   return 0;
 }

@@ -17,23 +17,51 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-typedef struct deviceCorrelation {
-	double phaseOne;
-	double phaseTwo;
-	double phaseThree;
-};
+#ifndef SENIOR_PROJECT_DATA_H
+#define SENIOR_PROJECT_DATA_H
+
+/* Standard Includes */
+#include <stdint.h>
+#include <stdlib.h>
+#include <complex.h>
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+
+/* Signal Processing Includes */
+#include "fftw3.h"
+
+#define CALIBRATION_LENGTH 240000
+#define FFT_TIME 5
+#define SAMPLE_TIME 2130
+#define SAMPLE_LENGTH 5079040
+#define SAMPLE_FREQUENCY 1200000
+#define COLLAR_OFFSET 43000
+#define COLLAR_TOLERANCE 2500
+#define NUM_BANDS 12
 
 /*
- * Correlate Data
+ * correlateInit - Description.
  */
-uint8_t correlateData();
+void correlateInit(void);
 
 /*
- * FFT Data
+ * fft_init - Description.
  */
-uint8_t * fftData();
+void fft_init(void);
 
 /*
- * Find Peaks
+ * DSP - Description.
+ * @param SDR1_data Data from first SDR
+ * @param SDR2_data Data from second SDR
+ * @param SDR3_data Data from third SDR
  */
-uint8_t * findpeaks();
+int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data);
+
+/*
+ * findPhaseDifference - Description.
+ * @param parameter Description
+ */
+void findPhaseDifference(uint8_t *SDR1_cal, uint8_t *SDR2_cal, uint8_t *SDR3_cal);
+
+#endif // SENIOR_PROJECT_CONTROL_H

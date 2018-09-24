@@ -33,9 +33,9 @@
 #include "rtl-sdr.h"
 
 // Define Macros
-//#define BSIZE 10559488
-//#define BSIZE 499712
-#define BSIZE 5279744
+#define BSIZE 5079040	// 240000 Calibration Data
+			// 5760 Dead Space
+			// 4833280 Actual Data
 #define NUM_SDRS 3
 #define READ 0
 #define SIZE 100
@@ -47,9 +47,9 @@ static pthread_mutex_t file;
 typedef struct rtlsdr_struct {
 	int blocksize;
 	uint32_t id;
-	uint8_t *buffer;
+	uint8_t *buffer[2];
 	rtlsdr_dev_t *dev;
-	pthread_t collection_t;
+	pthread_t collection_t, initialize_t;
 } rtlsdr_struct;
 struct rtlsdr_struct super;
 struct rtlsdr_struct sdrs[3];
@@ -57,7 +57,10 @@ struct rtlsdr_struct sdrs[3];
 typedef struct thread_struct {
 	int id;
 	int freq;
+	rtlsdr_dev_t *dev;
 } thread_struct;
+
+extern volatile uint32_t freq[4];
 
 /*
  * sdrs_setup - Initializes the structures for each RTL-SDR.
@@ -65,10 +68,15 @@ typedef struct thread_struct {
 void sdrs_setup(void);
 
 /*
+ * free_controls - Free malloc'd variables.
+ */
+void free_controls(void);
+
+/*
  * rtlsdr_setup - Sets up an individual RTL-SDR at the beginning of the program.
  * @param id ID of RTL-SDR - expecting an integer from 0 to NUM_SDRS
  */
-void rtlsdr_setup(int id, int f);
+void rtlsdr_setup(int f, rtlsdr_dev_t *dev);
 
 /*
  * rtlsdr_bias - Sets bias of Supervisory RTL-SDR for data collection from the
@@ -82,6 +90,6 @@ void rtlsdr_bias(int bias, uint8_t i2c_val);
  * @param id ID of RTL-SDR - expecting an integer from 0 to NUM_SDRS
  * @param f frequency id - expecting an integer from 0 to 3
  */
-void collect(int id, int f);
+void collect(int id, /*int f,*/ rtlsdr_dev_t *dev);
 
 #endif // SENIOR_PROJECT_CONTROL_H

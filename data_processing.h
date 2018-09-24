@@ -35,7 +35,10 @@
 #define FFT_TIME 5
 #define SAMPLE_TIME 2130
 #define SAMPLE_LENGTH 5079040
-#define NUM_BANDS 10
+#define SAMPLE_FREQUENCY 1200000
+#define COLLAR_OFFSET 43000
+#define COLLAR_TOLERANCE 2500
+#define NUM_BANDS 12
 
 /*
  * correlateInit - Description.

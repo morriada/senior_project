@@ -33,7 +33,7 @@
 extern void sdrs_setup(void);
 extern void rtlsdr_setup(int, rtlsdr_dev_t *);
 extern void rtlsdr_bias(int, uint8_t);
-extern void collect(int, /*int,*/ rtlsdr_dev_t *);
+extern void collect(int, int, rtlsdr_dev_t *);
 
 // Initialize variables
 extern pthread_mutex_t file;
@@ -101,7 +101,7 @@ void * collect_t(void * ptr)
     }
   }
   // Collect Data
-  collect(ts->id, /*ts->freq,*/ ts->dev);
+  collect(ts->id, ts->freq, ts->dev);
 
   pthread_exit(NULL);
 }
@@ -126,7 +126,7 @@ void * init_t(void * ptr)
 int main(void)
 {
   // Declare variables
-  int i, n;
+  int i, j, n;
   pthread_t dsp = (pthread_t)malloc(sizeof(pthread_t));
   // Prepare structures
   sdrs_setup();
@@ -169,6 +169,8 @@ int main(void)
       }
 
       rtlsdr_open(&(super.dev), 3);
+for(j = 0; j < 2; ++j)
+{
       rtlsdr_bias(0, 0x1f);
 
       printf("Frequency: %d\n", freq[n]);
@@ -206,9 +208,12 @@ int main(void)
       write(sdr2[WRITE], &ret, 1);
 
       // Sleep for 100 milliseconds
-      usleep(100000);
+      usleep(8000);
       // Switch RTL-SDRs Bias for Data Collection
       rtlsdr_bias(0, 0x00);
+
+//usleep(10000);
+//rtlsdr_bias(0, 0x1f);
 
       // Wait for each collection thread to join
       for(i = 0; i < NUM_SDRS; ++i)
@@ -217,21 +222,25 @@ int main(void)
           fprintf(stderr, "Error joining thread\n");
           exit(1);
         }
-        // Close RTL-SDR device
-        rtlsdr_close(sdrs[i].dev);
       }
+}
+      // Close RTL-SDR device
+      rtlsdr_close(sdrs[0].dev);
+      rtlsdr_close(sdrs[1].dev);
+      rtlsdr_close(sdrs[2].dev);
+
       // Close Supervisory Channel
       rtlsdr_close(super.dev);
 
       // Perform DSP
-      if(pthread_create(&dsp, NULL, dodsp, (void *)NULL)) {
+/*      if(pthread_create(&dsp, NULL, dodsp, (void *)NULL)) {
         fprintf(stderr, "Error creating thread\n");
         exit(1);
       }
       if(pthread_join(dsp, NULL)) {
         fprintf(stderr, "Error joining thread\n");
         exit(1);
-      }
+      }*/
  //   }
   }
 

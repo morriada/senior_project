@@ -90,6 +90,6 @@ void rtlsdr_bias(int bias, uint8_t i2c_val);
  * @param id ID of RTL-SDR - expecting an integer from 0 to NUM_SDRS
  * @param f frequency id - expecting an integer from 0 to 3
  */
-void collect(int id, /*int f,*/ rtlsdr_dev_t *dev);
+void collect(int id, int f, rtlsdr_dev_t *dev);
 
 #endif // SENIOR_PROJECT_CONTROL_H

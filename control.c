@@ -112,30 +112,28 @@ void file_save(int sdr_num, int f)
 	pthread_mutex_unlock(&file);
 }
 
-void collect(int id, /*int f,*/ rtlsdr_dev_t *dev)
+void collect(int id, int f, rtlsdr_dev_t *dev)
 {
 	// Initialize collection variables
 	int ret, blocksize, n_read, idx;
 
 	// Collect data from all RTL-SDRs
-	for(idx = 0; idx < 2; ++idx){
-		ret = n_read = 0;
-		blocksize = sdrs[id].blocksize;
+	ret = n_read = 0;
+	blocksize = sdrs[id].blocksize;
 
-		ret = rtlsdr_read_sync(dev, sdrs[id].buffer[idx], blocksize, &n_read);
+	ret = rtlsdr_read_sync(dev, sdrs[id].buffer[0], blocksize, &n_read);
 
-		// Check for errors
-		if(ret < 0) {
-			fprintf(stderr, "Runtime error: %d at %s:%d\n", ret, __FILE__, __LINE__);
-		} else if(n_read < blocksize) {
-			fprintf(stderr, "Short read sdr: %d: %d/%d ret: %d\n", id, n_read, blocksize, ret);
-		} else {
-			fprintf(stderr, "Read %d:%d\n", id, idx);
-		}
+	// Check for errors
+	if(ret < 0) {
+		fprintf(stderr, "Runtime error: %d at %s:%d\n", ret, __FILE__, __LINE__);
+	} else if(n_read < blocksize) {
+		fprintf(stderr, "Short read sdr: %d: %d/%d ret: %d\n", id, n_read, blocksize, ret);
+	} else {
+		fprintf(stderr, "Read %d\n", id);
 	}
 
 	// Save data to file
-	//file_save(id, f);
+	file_save(id, f);
 }
 
 void rtlsdr_bias(int bias, uint8_t i2c_val)

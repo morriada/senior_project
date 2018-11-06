@@ -17,26 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* Standard Includes */
-#include <stdlib.h>
-#include <complex.h>
-#include <stdio.h>
-#include <math.h>
-#include <string.h>
-
-/* Signal Processing Includes */
-#include "fftw3.h"
-
-#define CALIBRATION_LENGTH 600000
-#define CALIBRATION_SKIP 4x00000
-#define FFT_TIME 5
-#define SAMPLE_TIME 2130
-#define SAMPLE_LENGTH 5279744
-#define SAMPLE_FREQUENCY 1200000
-#define COLLAR_OFFSET 43000
-#define COLLAR_TOLERANCE 2500
-#define NUM_BANDS 12
-
 #define numFFTs ( SAMPLE_TIME / FFT_TIME )
 #define distance ( SAMPLE_LENGTH / numFFTs )
 #define fftLength (SAMPLE_LENGTH/SAMPLE_TIME)

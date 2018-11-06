@@ -224,14 +224,14 @@ int main(void)
       rtlsdr_close(super.dev);
 
       // Perform DSP
-/*      if(pthread_create(&dsp, NULL, dodsp, (void *)NULL)) {
+      if(pthread_create(&dsp, NULL, dodsp, (void *)NULL)) {
         fprintf(stderr, "Error creating thread\n");
         exit(1);
       }
       if(pthread_join(dsp, NULL)) {
         fprintf(stderr, "Error joining thread\n");
         exit(1);
-      }*/
+      }
  //   }
   }
 

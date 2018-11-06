@@ -135,7 +135,7 @@ void collect(int id, int f, rtlsdr_dev_t *dev)
 	}
 
 	// Save data to file
-	file_save(id, f);
+	//file_save(id, f);
 }
 
 void rtlsdr_bias(int bias, uint8_t i2c_val)

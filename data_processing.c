@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "data_processing.h"
+
 #define numFFTs ( SAMPLE_TIME / FFT_TIME )
 #define distance ( SAMPLE_LENGTH / numFFTs )
 #define fftLength (SAMPLE_LENGTH/SAMPLE_TIME)

@@ -17,7 +17,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "data_processing.h"
+/* Standard Includes */
+#include <stdlib.h>
+#include <complex.h>
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+
+/* Signal Processing Includes */
+#include "fftw3.h"
+
+#define CALIBRATION_LENGTH 600000
+#define CALIBRATION_SKIP 4x00000
+#define FFT_TIME 5
+#define SAMPLE_TIME 2130
+#define SAMPLE_LENGTH 5279744
+#define SAMPLE_FREQUENCY 1200000
+#define COLLAR_OFFSET 43000
+#define COLLAR_TOLERANCE 2500
+#define NUM_BANDS 12
 
 #define numFFTs ( SAMPLE_TIME / FFT_TIME )
 #define distance ( SAMPLE_LENGTH / numFFTs )
@@ -30,10 +48,10 @@ static int sync_debug = 1;
 static fftw_complex *fft1in, *fft1out, *fft2in, *fft2out, *fft3in, *fft3out, *fft4in, *fft4out, *fft5in, *fft5out, *fft6in, *fft6out;
 static fftw_plan fft1plan, fft2plan, fft3plan, fft4plan, fft5plan, fft6plan;
 float  complex peaks[3][NUM_BANDS][numFFTs];
-int    peakLocations[3][NUM_BANDS][numFFTs], signalLocation[NUM_BANDS], signalLength = 6*distance;
-float  angleOfArrival[NUM_BANDS], phaseCorrectionAC, phaseCorrectionBC, phaseCorrectionAB, phaseAC, phaseBC;
+int    peakLocations[3][NUM_BANDS][numFFTs], signalLocation[NUM_BANDS], signalLength = 4*distance, startA, startB, startC;
+float  angleOfArrival[NUM_BANDS], phaseCorrectionAC, phaseCorrectionBC, phaseCorrectionAB, phaseAC, phaseBC, timeDifferenceAC, timeDifferenceBC;
 
-int numberToSubtract = 1;
+int numberToSubtract = 2;
 
 /* Initialize Correlation */
 void correlateInit(){
@@ -87,223 +105,90 @@ void xcorr(fftw_complex * signala, fftw_complex * signalb, fftw_complex * result
     return;
 }
 
-void findPhaseDifferenceSignals(uint8_t *SDR1_cal, uint8_t *SDR2_cal, uint8_t *SDR3_cal, int fftStart){
-    fftw_complex *resultAC;
-    fftw_complex *resultBC;
-
-    resultAC = fftw_malloc(2*signalLength * sizeof(*resultAC));
-    resultBC = fftw_malloc(2*signalLength * sizeof(*resultBC));
-    int i,j;
-
-    uint8_t *buf1 = SDR1_cal;
-    fftw_complex *floatbuf1;
-    floatbuf1 = fftw_malloc( signalLength * sizeof(*floatbuf1));
-    j = 0;
+/*void phaseCorrectSignal(){
+    int i;
     for(i = 0; i < signalLength; i++){
-        floatbuf1[i] = (buf1[fftStart + j] + I*buf1[fftStart + j+1]) - (127.4f+127.4f*I);
-        j += 2;
+        fft4out[i] *= cexpf(I*(phaseCorrectionAC*M_PI/180.0));
+        fft5out[i] *= cexpf(I*(phaseCorrectionBC*M_PI/180.0));
     }
+}*/
 
-    uint8_t *buf2 = SDR2_cal;
-    fftw_complex *floatbuf2;
-    floatbuf2 = fftw_malloc(signalLength * sizeof(*floatbuf2));
-    j = 0;
-    for(i = 0; i < signalLength; i++){
-        floatbuf2[i] = (buf2[fftStart + j] + I*buf2[fftStart + j+1]) - (127.4f+127.4f*I);
-        j += 2;
+void phaseCorrectSignal(fftw_complex *SDR1_data, fftw_complex *SDR2_data, fftw_complex *SDR3_data, int N){
+    int i;
+    float real, imag;
+    for(i = 0; i < N; i++){
+        real = crealf(SDR1_data[i])*cos(-1.0*phaseCorrectionAC*M_PI/180.0) - cimagf(SDR1_data[i])*sin(-1.0*phaseCorrectionAC*M_PI/180.0);
+        imag = I*(crealf(SDR1_data[i])*sin(-1.0*phaseCorrectionAC*M_PI/180.0) + cimagf(SDR1_data[i])*cos(-1.0*phaseCorrectionAC*M_PI/180.0));
+        SDR1_data[i] = real + imag;
+
+        real = crealf(SDR2_data[i])*cos(phaseCorrectionBC*M_PI/180.0) - cimagf(SDR2_data[i])*sin(phaseCorrectionBC*M_PI/180.0);
+        imag = I*(crealf(SDR2_data[i])*sin(phaseCorrectionBC*M_PI/180.0) + cimagf(SDR2_data[i])*cos(phaseCorrectionBC*M_PI/180.0));
+        SDR2_data[i] = real + imag;
+
     }
-
-    uint8_t *buf3 = SDR3_cal;
-    fftw_complex *floatbuf3;
-    floatbuf3 = fftw_malloc(signalLength * sizeof(*floatbuf3));
-    j = 0;
-    for(i = 0; i < signalLength; i++){
-        floatbuf3[i] = (buf3[fftStart + j] + I*buf3[fftStart + j+1]) - (127.4f+127.4f*I);
-        j += 2;
-    }
-
-
-    xcorr(floatbuf1, floatbuf3, resultAC, signalLength);
-    xcorr(floatbuf2, floatbuf3, resultBC, signalLength);
-
-    float maxAC = 0.0, maxBC = 0.0;
-    int locAC, locBC;
-
-    for(i = 0; i < (2 * signalLength); i++){
-        float magAC = sqrt((crealf(resultAC[i]) * crealf(resultAC[i])) + (cimagf(resultAC[i]) * cimagf(resultAC[i])));
-        float magBC = sqrt(crealf(resultBC[i]) * crealf(resultBC[i]) + cimagf(resultBC[i]) * cimagf(resultBC[i]));
-        if(magAC > maxAC){
-            locAC = i;
-            maxAC = magAC;
-        }
-        if(magBC > maxBC){
-            locBC = i;
-            maxBC = magBC;
-        }
-    }
-
-    phaseAC = atan(cimagf(resultAC[locAC])/crealf(resultAC[locAC]))*(180/M_PI);
-    if(cimagf(resultAC[locAC]) > 0 && crealf(resultAC[locAC]) < 0)
-        phaseAC = (phaseAC * -1.0) + 90.0;
-    else if(cimagf(resultAC[locAC]) < 0 && crealf(resultAC[locAC]) < 0)
-        phaseAC = (phaseAC * -1.0) - 90.0;
-
-    phaseBC = atan(cimagf(resultBC[locBC])/crealf(resultBC[locBC]))*(180/M_PI);
-    if(cimagf(resultBC[locBC]) > 0 && crealf(resultBC[locBC]) < 0)
-        phaseBC = (phaseBC * -1.0) + 90.0;
-    else if(cimagf(resultBC[locBC]) < 0 && crealf(resultBC[locBC]) < 0)
-        phaseBC = (phaseBC * -1.0) - 90.0;
 }
 
 float phaseInterferometry(int band, float *phase){
     int i;
     float top, bottom, phaseAC, phaseBC;
-    //top = 1.1547 * (phase[0] - phase[2] + phaseCorrectionAC);
-    //bottom = phase[1] - phase[2] + phaseCorrectionBC;
-    printf("Phase CorrectionAC: %f\t Phase Correction BC: %f\n", phaseCorrectionAC, phaseCorrectionBC);
-    phaseAC = phase[0] - phase[2] + phaseCorrectionAC;
-    phaseBC = phase[1] - phase[2] + phaseCorrectionBC;
-printf("Phase AC: %f\t Phase BC: %f\n", phaseAC, phaseBC);
-    //if((top > 0 && bottom > 0) || (top < 0 && bottom < 0))
-    //    offset = 30.0;
 
-    if(phaseAC >360.0)
-        phaseAC =(phaseAC - 360.0);
-    else if(phaseAC < -360.0)
+    //printf("Phase CorrectionAC: %f\t Phase Correction BC: %f\n", phaseCorrectionAC, phaseCorrectionBC);
+    phaseAC = phase[0] - phase[2] - phaseCorrectionAC;
+    phaseBC = phase[1] - phase[2] - phaseCorrectionBC;
+
+    if(phaseAC > 180.0)
+        phaseAC -= 360.0;
+    if(phaseAC < -180.0)
         phaseAC += 360.0;
-    if(phaseBC > 360.0)
+
+    if(phaseBC > 180.0)
         phaseBC -= 360.0;
-    else if(phaseBC < -360.0)
+    if(phaseBC < -180.0)
         phaseBC += 360.0;
 
-    top = (1.40963 * phaseAC) - (0.70482 * phaseBC);
-    bottom = 1.22078 * phaseBC;
+    printf("PhaseAC: %f\t PhaseBC: %f\n", phaseAC, phaseBC);
 
-    printf("Phase 0: %f\t Phase 1: %f\t Phase 2: %f\n", phase[0], phase[1], phase[2]);
-    printf("Before Top is: %f\n",top);
-    printf("Before Bottom is: %f\n",bottom);
+    //top = (1.40963 * phaseAC) - (0.70482 * phaseBC);
+    //bottom = 1.22078 * phaseBC;
 
-    /*if(top > 180.0)
-        top -= 360.0;
-    else if(top < -180.0)
-        top += 360.0;
-    if(bottom > 180.0)
-        bottom -= 360.0;
-    else if(bottom < -180.0)
-        bottom += 360.0;*/
-
-    /*if(top > 180){
-        int topMult = top/180;
-        top -= topMult*180;
-    }
-    else if(top < 180){
-        int topMult = top/(-180);
-        top += topMult*180;
-    }
-
-    if(bottom > 180){
-        int botMult = bottom/180;
-        bottom -= botMult*180;
-    }
-    else if(bottom < 180){
-        int botMult = bottom/(-180);
-        bottom += botMult*180;
-    }*/
-
-
-    //top = top * 1.1547;
-
-    /*if(top > 90.0)
-        top -= 180.0;
-    else if(top < -90.0)
-        top += 180.0;
-
-    if(bottom > 90.0)
-        bottom -= 180.0;
-    else if(bottom < -90.0)
-        bottom += 180.0;*/
-
-    printf("Top is: %f\n",top);
-    printf("Bottom is: %f\n",bottom);
-
-    /*if(bottom < 0 && top < 0)
-        offset = -180.0;
-    else if(bottom > 0 && top < 0)
-        offset = 180.0;*/
+    top = (4.22710 * phaseAC) - (4.22710 * phaseBC);
+    bottom = 1.13265 * phaseBC;
+    printf("Top: %f\t Bottom: %f\n", top, bottom);
 
     return atanf(top/bottom)*(180/M_PI);
-
 }
 
-
-
-/*float phaseInterferometry(int band, int *location){
-    int i;
-    float phase[3], top, bottom;
-    for(i = 0; i < 3; i++){
-        phase[i] = (atanf(cimagf(peaks[i][band][location[i]])/crealf(peaks[i][band][location[i]]))) * (180.0/M_PI);
-        if(cimagf(peaks[i][band][location[i]]) > 0 && crealf(peaks[i][band][location[i]]) < 0)
-            phase[i] = (phase[i] * -1.0) + 90.0;
-        else if(cimagf(peaks[i][band][location[i]]) < 0 && crealf(peaks[i][band][location[i]]) < 0)
-            phase[i] = (phase[i] * -1.0) - 90.0;
-    }
-    top = 1.1547 * (phase[0] - phase[2] + phaseCorrectionAC);
-    bottom = phase[1] - phase[2] + phaseCorrectionBC;
-
-    printf("Top is: %f\n",top);
-    printf("Bottom is: %f\n",bottom);
-
-    if(top > 180.0)
-        top -= 360.0;
-    else if(top < -180.0)
-        top += 360.0;
-    if(bottom > 180.0)
-        bottom -= 360.0;
-    else if(bottom < -180.0)
-        bottom += 360.0;
-
-    printf("Top is: %f\n",top);
-    printf("Bottom is: %f\n",bottom);
-
-    return atanf((top/bottom) - 0.57735)*(180/M_PI);
-
-}*/
-
-void signalFFT(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data, int fftStart){
+void signalFFT(fftw_complex *SDR1_data, fftw_complex *SDR2_data, fftw_complex *SDR3_data, int fftStart){
 
     int i, j;
-    //int signalLength = 8 * distance;
 
     //Does not do ffts if no signal
     if(fftStart == -1)
         return;
     printf("fftStart: %d\n", fftStart);
-    uint8_t *buf1 = SDR1_data;
     fftw_complex *floatbuf1 = fft4in;
-    j = 0;
-    for(i = 0; i < signalLength; i++){
-        floatbuf1[i] = (buf1[2*fftStart + j] + I*buf1[2*fftStart + j+1]) - (127.4f+127.4f*I);
-        j += 2;
-    }
-    fftw_execute(fft4plan);
 
-    uint8_t *buf2 = SDR2_data;
+    for(i = 0; i < signalLength; i++){
+        floatbuf1[i] = SDR1_data[fftStart + i];
+    }
+
     fftw_complex *floatbuf2 = fft5in;
-    j = 0;
     for(i = 0; i < signalLength; i++){
-        floatbuf2[i] = (buf2[2*fftStart + j] + I*buf2[2*fftStart + j+1]) - (127.4f+127.4f*I);
-        j += 2;
+        floatbuf2[i] = SDR2_data[fftStart + i];
     }
-    fftw_execute(fft5plan);
 
-    uint8_t *buf3 = SDR3_data;
     fftw_complex *floatbuf3 = fft6in;
-    j = 0;
     for(i = 0; i < signalLength; i++){
-        floatbuf3[i] = (buf3[2*fftStart + j] + I*buf3[2*fftStart + j+1]) - (127.4f+127.4f*I);
-        j += 2;
+        floatbuf3[i] = SDR3_data[fftStart + i];
     }
+
+    //phaseCorrectSignal(floatbuf1, floatbuf2, floatbuf3, signalLength);
+
+    fftw_execute(fft4plan);
+    fftw_execute(fft5plan);
     fftw_execute(fft6plan);
+
+
 
 }
 
@@ -390,17 +275,15 @@ void findSignalPeaks(int band){
     /*finalSignal[0] = fft4out[4139];
     finalSignal[1] = fft5out[4139];
     finalSignal[2] = fft6out[4139];*/
+    //printf("AC This is not a test: %f\n", cargf(finalSignal[0]/finalSignal[2])*180.0/M_PI + phaseCorrectionAC);
+    //printf("BC This is not a test: %f\n", cargf(finalSignal[1]/finalSignal[2])*180.0/M_PI + phaseCorrectionBC);
+
     for(k = 0; k < 3; k++)
         printf("Location %d: %d\t Peak: %f\n", k, finalSignalLocation[k], sqrt(crealf(finalSignal[k])*crealf(finalSignal[k]) + cimagf(finalSignal[k])*cimagf(finalSignal[k])));
     //if(finalSignalLocation[0] == finalSignalLocation[1] && finalSignalLocation[0] == finalSignalLocation[2]){
         float phase[3];
         for(i = 0; i < 3; i++){
-            phase[i] = (atanf(cimagf(finalSignal[i])/crealf(finalSignal[i]))) * (180.0/M_PI);
-            if(cimagf(finalSignal[i]) > 0 && crealf(finalSignal[i]) < 0)
-                phase[i] = 180.0 + phase[i];
-            else if(cimagf(finalSignal[i]) < 0 && crealf(finalSignal[i]) < 0)
-                phase[i] = (180.0 - phase[i]) * -1.0;
-            //printf("Phase %d: %f\n", i, phase[i]);
+            phase[i] = cargf(finalSignal[i]) * (180.0/M_PI);
         }
         angleOfArrival[band] = phaseInterferometry(band, phase);
     //}
@@ -427,6 +310,10 @@ float findSignal(){
             averageNoise[i][j] /= (float)numFFTs;
         }
     }
+
+    /*for(i = 0; i < numFFTs; i++){
+        printf("%d\t%d\t%d\n",peakLocations[0][7][i], peakLocations[1][7][i], peakLocations[2][7][i]);
+    }*/
 
 
     int numLeft[3][NUM_BANDS], numRight[3][NUM_BANDS];
@@ -490,8 +377,8 @@ float findSignal(){
             finalNumRight[i][j] = numberRight;
             finalNumLeft[i][j] = numberLeft;
             location[i][j] = numberRight + numberLeft;
-           // if(location[i][j] <= 5 && location[i][j] >= 3)
-           //     printf("Band %d: SDR%d Left: %d Right: %d Location: %d Max: %d\n", j, i, numberLeft, numberRight, peakLocations[i][j][maxLocation[i][j]], maxLocation[i][j] );
+            /*if(location[i][j] <= 5 && location[i][j] >= 3)
+                printf("Band %d: SDR%d Left: %d Right: %d Location: %d Max: %d\n", j, i, numberLeft, numberRight, peakLocations[i][j][maxLocation[i][j]], maxLocation[i][j] );*/
         }
     }
     float complex phaseComplex[3][NUM_BANDS];
@@ -503,7 +390,7 @@ float findSignal(){
 
         phase[0][i] = (atanf(cimagf(phaseComplex[0][i])/crealf(phaseComplex[0][i]))) * (180.0/M_PI);
         if(cimagf(phaseComplex[0][i]) > 0 && crealf(phaseComplex[0][i]) < 0)
-            phase[0][i] = (phase[0][i] * -1.0) + 90;
+            phase[0][i] = (phase[0][i] * -1.0) + 90.0;
         else if(cimagf(phaseComplex[0][i]) < 0 && crealf(phaseComplex[0][i]) < 0)
             phase[0][i] = (phase[0][i] * -1.0) - 90.0;
 
@@ -525,18 +412,22 @@ float findSignal(){
 
 
     for(j = 0; j < NUM_BANDS; j++){
-        if(((maxLocation[0][j] - numLeft[0][j]) >= (maxLocation[1][j] - numLeft[1][j])) && ((maxLocation[0][j] - numLeft[0][j]) >= (maxLocation[2][j] - numLeft[2][j])))
+        /*if(((maxLocation[0][j] - numLeft[0][j]) >= (maxLocation[1][j] - numLeft[1][j])) && ((maxLocation[0][j] - numLeft[0][j]) >= (maxLocation[2][j] - numLeft[2][j])))
             locationForAnalysis[j] = maxLocation[0][j] - finalNumLeft[0][j]-numberToSubtract;
         else if(((maxLocation[1][j] - numLeft[1][j]) >= (maxLocation[0][j] - numLeft[0][j])) && ((maxLocation[1][j] - numLeft[1][j]) >= (maxLocation[2][j] - numLeft[2][j])))
             locationForAnalysis[j] = (maxLocation[1][j] - finalNumLeft[1][j])-numberToSubtract;
         else if(((maxLocation[2][j] - numLeft[2][j]) >= (maxLocation[0][j] - numLeft[0][j])) && ((maxLocation[2][j] - numLeft[2][j]) >= (maxLocation[1][j] - numLeft[1][j])))
-            locationForAnalysis[j] = (maxLocation[2][j] - finalNumLeft[2][j])-numberToSubtract;
+            locationForAnalysis[j] = (maxLocation[2][j] - finalNumLeft[2][j])-numberToSubtract;*/
+        locationForAnalysis[j] = maxLocation[0][j];
 
         if( ((numLeft[0][j] + numRight[0][j] + 1) >= 3) && ((numLeft[0][j] + numRight[0][j] + 1) <= 5) && ((numLeft[1][j] + numRight[1][j] + 1) >= 3) && ((numLeft[1][j] + numRight[1][j] + 1) <= 5) &&((numLeft[2][j] + numRight[2][j] + 1) >= 3) && ((numLeft[2][j] + numRight[2][j] + 1) <= 5) && (location[0][j] >= 4 && location[0][j] <= 5) && (location[1][j] >= 4 && location[1][j] <= 5) && (location[2][j] >=4 && location[0][j] <=5)){
+
             int location[3] = {(maxLocation[0][j] - finalNumLeft[0][j] + 1),(maxLocation[1][j] - finalNumLeft[1][j] + 1),(maxLocation[2][j] - finalNumLeft[2][j] + 1)};
             signalLocation[j] = distance * locationForAnalysis[j];
-            printf("SDR1 Max: %f\t SDR2 Max: %f\t SDR3 Max: %f\n", max[0][j], max[1][j], max[2][j]);
-            printf("Location for Analysis: %d\n", locationForAnalysis[j]);
+            //printf("SDR1 Max: %d\t SDR2 Max: %d\t SDR3 Max: %d\n", maxLocation[0][j], maxLocation[1][j], maxLocation[2][j]);
+            printf("SDR1 Max: %f\t SDR2 Max: %f\t SDR3 Max: %f\n", cargf(peaks[0][j][maxLocation[0][j]]) * 180.0/M_PI, cargf(peaks[1][j][maxLocation[1][j]]) * 180.0/M_PI, cargf(peaks[2][j][maxLocation[2][j]]) * 180.0/M_PI);
+            printf("AC: %f\t BC: %f\n",cargf(peaks[0][j][maxLocation[0][j]]) * 180.0/M_PI - cargf(peaks[2][j][maxLocation[2][j]]) * 180.0/M_PI + phaseCorrectionAC, cargf(peaks[1][j][maxLocation[1][j]]) * 180.0/M_PI - cargf(peaks[2][j][maxLocation[2][j]]) * 180.0/M_PI + phaseCorrectionBC);
+            //printf("Location for Analysis: %d\n", locationForAnalysis[j]);
         }
         else{
             angleOfArrival[j] = NAN;
@@ -658,6 +549,14 @@ void findFFTPeaks(int sdrNumber, int band, int fftNum){
 int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data){
     int i, j, k;
 
+    fftw_complex *resultAC;
+    fftw_complex *resultBC;
+    fftw_complex *resultAB;
+
+    resultAC = fftw_malloc(2*CALIBRATION_LENGTH * sizeof(*resultAC));
+    resultBC = fftw_malloc(2*CALIBRATION_LENGTH * sizeof(*resultBC));
+    resultAB = fftw_malloc(2*CALIBRATION_LENGTH * sizeof(*resultAB));
+
     uint8_t *buf1 = SDR1_data;
     fftw_complex *floatbuf1 = fft1in;
     j = 0;
@@ -665,6 +564,13 @@ int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data){
         floatbuf1[i] = (buf1[j] + I*buf1[j+1]) - (127.4f+127.4f*I);
         j += 2;
     }
+    for(i = 0; i < SAMPLE_LENGTH; i++){
+        if(i < (SAMPLE_LENGTH - startA))
+            floatbuf1[i] = floatbuf1[i + startA];
+        else
+            floatbuf1[i] = 0.0;
+    }
+
     fftw_execute(fft1plan);
 
     uint8_t *buf2 = SDR2_data;
@@ -674,6 +580,14 @@ int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data){
         floatbuf2[i] = (buf2[j] + I*buf2[j+1]) - (127.4f+127.4f*I);
         j += 2;
     }
+
+    for(i = 0; i < SAMPLE_LENGTH; i++){
+        if(i < (SAMPLE_LENGTH - startB))
+            floatbuf2[i] = floatbuf2[i + startB];
+        else
+            floatbuf2[i] = 0.0;
+    }
+
     fftw_execute(fft2plan);
 
     uint8_t *buf3 = SDR3_data;
@@ -683,10 +597,15 @@ int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data){
         floatbuf3[i] = (buf3[j] + I*buf3[j+1]) - (127.4f+127.4f*I);
         j += 2;
     }
-    fftw_execute(fft3plan);
 
-    //Process the outputs
-    //Loop through every FFT taken
+    for(i = 0; i < SAMPLE_LENGTH; i++){
+        if(i < (SAMPLE_LENGTH - startC))
+            floatbuf3[i] = floatbuf3[i + startC];
+        else
+            floatbuf3[i] = 0.0;
+    }
+
+    fftw_execute(fft3plan);
 
     for(i = 0; i < 3; i++){
         for(j = 0; j < numFFTs; j++){
@@ -699,13 +618,15 @@ int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data){
     findSignal();
 
     for(i = 0; i < NUM_BANDS; i++){
-        signalFFT(SDR1_data, SDR2_data, SDR3_data, signalLocation[i]);
+        signalFFT(floatbuf1, floatbuf2, floatbuf3, signalLocation[i]);
         if(signalLocation[i] != -1){
             findSignalPeaks(i);
-            //findPhaseDifferenceSignals(SDR1_data, SDR2_data, SDR3_data, signalLocation[i]);
-            //printf("Phase Difference AC: %f\t Phase Difference BC: %f\n", phaseAC, phaseBC);
         }
     }
+
+    fftw_free(resultAC);
+    fftw_free(resultAB);
+    fftw_free(resultBC);
 
     fftw_free(fft1in);
     fftw_free(fft2in);
@@ -720,10 +641,6 @@ int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data){
     fftw_free(fft4out);
     fftw_free(fft5out);
     fftw_free(fft6out);
-
-    for(i = 0; i < NUM_BANDS; i++)
-        printf("Band %d: %f\n", i, angleOfArrival[i]);
-
 
     return 0;
 
@@ -745,9 +662,14 @@ void findPhaseDifference(uint8_t *SDR1_cal, uint8_t *SDR2_cal, uint8_t *SDR3_cal
     floatbuf1 = fftw_malloc( CALIBRATION_LENGTH * sizeof(*floatbuf1));
     j = 0;
     for(i = 0; i < CALIBRATION_LENGTH; i++){
-        floatbuf1[i] = (buf1[j] + I*buf1[j+1]) - (127.4f+127.4f*I);
+        floatbuf1[i] = (buf1[j] + I*buf1[j+1]) - 127.4-127.4*I;
         j += 2;
     }
+    for(i = 0; i< CALIBRATION_LENGTH-CALIBRATION_SKIP; i++){
+        floatbuf1[i] = floatbuf1[i+CALIBRATION_SKIP];
+    }
+    //printf("First Character: %x\n",buf1[1]);
+    //printf("SDR1 0: %f + %fi\n",crealf(floatbuf1[0]), cimagf(floatbuf1[0]));
 
     uint8_t *buf2 = SDR2_cal;
     fftw_complex *floatbuf2;
@@ -757,6 +679,10 @@ void findPhaseDifference(uint8_t *SDR1_cal, uint8_t *SDR2_cal, uint8_t *SDR3_cal
         floatbuf2[i] = (buf2[j] + I*buf2[j+1]) - (127.4f+127.4f*I);
         j += 2;
     }
+    for(i = 0; i< CALIBRATION_LENGTH-CALIBRATION_SKIP; i++){
+        floatbuf2[i] = floatbuf2[i+CALIBRATION_SKIP];
+    }
+    //printf("SDR2 0: %f + %fi\n",crealf(floatbuf2[0]), cimagf(floatbuf2[0]));
 
     uint8_t *buf3 = SDR3_cal;
     fftw_complex *floatbuf3;
@@ -766,22 +692,27 @@ void findPhaseDifference(uint8_t *SDR1_cal, uint8_t *SDR2_cal, uint8_t *SDR3_cal
         floatbuf3[i] = (buf3[j] + I*buf3[j+1]) - (127.4f+127.4f*I);
         j += 2;
     }
+    for(i = 0; i< CALIBRATION_LENGTH-CALIBRATION_SKIP; i++){
+        floatbuf3[i] = floatbuf3[i+CALIBRATION_SKIP];
+    }
+    //printf("SDR3 0: %f + %fi\n",crealf(floatbuf3[0]), cimagf(floatbuf3[0]));
 
 
-    xcorr(floatbuf1, floatbuf3, resultAC, CALIBRATION_LENGTH);
-    xcorr(floatbuf2, floatbuf3, resultBC, CALIBRATION_LENGTH);
-    xcorr(floatbuf1, floatbuf2, resultAB, CALIBRATION_LENGTH);
+    xcorr(floatbuf1, floatbuf3, resultAC, CALIBRATION_LENGTH-CALIBRATION_SKIP);
+    xcorr(floatbuf2, floatbuf3, resultBC, CALIBRATION_LENGTH-CALIBRATION_SKIP);
+    xcorr(floatbuf1, floatbuf2, resultAB, CALIBRATION_LENGTH-CALIBRATION_SKIP);
 
     float maxAC = 0.0, maxBC = 0.0, maxAB = 0.0;
     int locAC, locBC, locAB;
-
-    for(i = 0; i < (2 * CALIBRATION_LENGTH); i++){
-        float magAC = sqrt((crealf(resultAC[i]) * crealf(resultAC[i])) + (cimagf(resultAC[i]) * cimagf(resultAC[i])));
-        float magBC = sqrt(crealf(resultBC[i]) * crealf(resultBC[i]) + cimagf(resultBC[i]) * cimagf(resultBC[i]));
-        float magAB = sqrt((crealf(resultAB[i]) * crealf(resultAB[i])) + (cimagf(resultAB[i]) * cimagf(resultAB[i])));
+    //printf("I got before the search\n");
+    for(i = 0; i < (2*(CALIBRATION_LENGTH - CALIBRATION_SKIP)); i++){
+        float magAC = (crealf(resultAC[i]) * crealf(resultAC[i])) + (cimagf(resultAC[i]) * cimagf(resultAC[i]));
+        float magBC = (crealf(resultBC[i]) * crealf(resultBC[i])) + (cimagf(resultBC[i]) * cimagf(resultBC[i]));
+        float magAB = (crealf(resultAB[i]) * crealf(resultAB[i])) + (cimagf(resultAB[i]) * cimagf(resultAB[i]));
         if(magAC > maxAC){
             locAC = i;
             maxAC = magAC;
+            //printf("Max AC: %f\n", maxAC);
         }
         if(magBC > maxBC){
             locBC = i;
@@ -792,32 +723,186 @@ void findPhaseDifference(uint8_t *SDR1_cal, uint8_t *SDR2_cal, uint8_t *SDR3_cal
             maxAB = magAB;
         }
     }
-   
-    phaseCorrectionAC = atan(cimagf(resultAC[locAC])/crealf(resultAC[locAC]))*(180/M_PI);
-    printf("Phase Correction AC Before: %f\n", phaseCorrectionAC);
-    if(cimagf(resultAC[locAC]) > 0 && crealf(resultAC[locAC]) < 0)
-        phaseCorrectionAC = 180.0 + phaseCorrectionAC;
-    else if(cimagf(resultAC[locAC]) < 0 && crealf(resultAC[locAC]) < 0)
-        phaseCorrectionAC = (180.0 - phaseCorrectionAC) * -1.0;
+    printf("Length off between A and C: %d\n", locAC-(CALIBRATION_LENGTH- CALIBRATION_SKIP));
+    printf("Length off between A and B: %d\n", locAB-(CALIBRATION_LENGTH - CALIBRATION_SKIP));
+    printf("Length off between B and C: %d\n", locBC-(CALIBRATION_LENGTH - CALIBRATION_SKIP));
 
-    phaseCorrectionBC = atan(cimagf(resultBC[locBC])/crealf(resultBC[locBC]))*(180/M_PI);
-    if(cimagf(resultBC[locBC]) > 0 && crealf(resultBC[locBC]) < 0)
-        phaseCorrectionBC = (180.0 + phaseCorrectionBC);
-    else if(cimagf(resultBC[locBC]) < 0 && crealf(resultBC[locBC]) < 0)
-        phaseCorrectionBC = (180.0 - phaseCorrectionBC) * -1.0;
+    //float complex c = resultAC[locAC]/CALIBRATION_LENGTH;
 
-    phaseCorrectionAB = atan(cimagf(resultAB[locAB])/crealf(resultAB[locAB]))*(180/M_PI);
-    if(cimagf(resultAB[locAB]) > 0 && crealf(resultAB[locAB]) < 0)
-        phaseCorrectionAB = (180.0 + phaseCorrectionAB);
-    else if(cimagf(resultAB[locAB]) < 0 && crealf(resultAB[locAB]) < 0)
-        phaseCorrectionAB = (180.0 - phaseCorrectionAB) * -1.0;
-	
-    fftw_free(resultAC);
-    fftw_free(resultAB);
-    fftw_free(resultBC);
+    startA = locAC-(CALIBRATION_LENGTH - CALIBRATION_SKIP);
+    startB = locBC-(CALIBRATION_LENGTH - CALIBRATION_SKIP);
+    //startC = locAC-CALIBRATION_LENGTH;
+    startC = 0.0;
+
+    timeDifferenceAC = startA;
+    timeDifferenceBC = startB;
+
+    float y1 = resultAC[locAC-1];
+    float y2 = resultAC[locAC];
+    float y3 = resultAC[locAC + 1];
+
+    timeDifferenceAC += (y3-y1) / (2*(2*y2-y1-y3));
+    //timeDifferenceAC *= 1.0/4.0;
+
+    y1 = resultAC[locBC-1];
+    y2 = resultAC[locBC];
+    y3 = resultAC[locBC + 1];
+
+    timeDifferenceBC += (y3-y1) / (2*(2*y2-y1-y3));
+
+
+    //timeDifferenceBC *= 1.0/4.0;
+
+    phaseCorrectionAC = cargf(resultAC[locAC]) * 180.0/M_PI;
+    phaseCorrectionBC = cargf(resultBC[locBC]) * 180.0/M_PI;
+    phaseCorrectionAB = cargf(resultAB[locAB]) * 180.0/M_PI;
+    //phaseCorrectionAC = 150;
+    //phaseCorrectionBC = 28.0;
+
+    //phaseCorrectSignal(floatbuf1, floatbuf2, floatbuf3,CALIBRATION_LENGTH);
+
+    xcorr(floatbuf1, floatbuf3, resultAC, (CALIBRATION_LENGTH - CALIBRATION_SKIP));
+    xcorr(floatbuf2, floatbuf3, resultBC, (CALIBRATION_LENGTH - CALIBRATION_SKIP));
+    xcorr(floatbuf1, floatbuf2, resultAB, (CALIBRATION_LENGTH - CALIBRATION_SKIP));
+
+    maxAC = 0.0, maxBC = 0.0, maxAB = 0.0;
+    //printf("I got before the search\n");
+    for(i = 0; i < (2*CALIBRATION_LENGTH); i++){
+        float magAC = (crealf(resultAC[i]) * crealf(resultAC[i])) + (cimagf(resultAC[i]) * cimagf(resultAC[i]));
+        float magBC = (crealf(resultBC[i]) * crealf(resultBC[i])) + (cimagf(resultBC[i]) * cimagf(resultBC[i]));
+        float magAB = (crealf(resultAB[i]) * crealf(resultAB[i])) + (cimagf(resultAB[i]) * cimagf(resultAB[i]));
+        if(magAC > maxAC){
+            locAC = i;
+            maxAC = magAC;
+            //printf("Max AC: %f\n", maxAC);
+        }
+        if(magBC > maxBC){
+            locBC = i;
+            maxBC = magBC;
+        }
+        if(magAB > maxAB){
+            locAB = i;
+            maxAB = magAB;
+        }
+    }
+    printf("Before AC: %f\t BC: %f\n", phaseCorrectionAC, phaseCorrectionBC);
+    //printf("Does this work? AC: %f\t BC: %f\n", cargf(resultAC[locAC]) * 180.0/M_PI, cargf(resultBC[locBC]) * 180.0/M_PI);
+    /*fftw_complex *buf1Stor = fftw_malloc(CALIBRATION_LENGTH * sizeof(*floatbuf1));
+    fftw_complex *buf2Stor = fftw_malloc(CALIBRATION_LENGTH * sizeof(*floatbuf2));
+    fftw_complex *buf3Stor = fftw_malloc(CALIBRATION_LENGTH * sizeof(*floatbuf3));
+
+    memcpy(buf1Stor, floatbuf1, 2*CALIBRATION_LENGTH);
+    memcpy(buf2Stor, floatbuf2, 2*CALIBRATION_LENGTH);
+    memcpy(buf3Stor, floatbuf3, 2*CALIBRATION_LENGTH);
+    int stopAC = 0;
+    int stopBC = 0;
+
+    int calibrate = 1;
+    while(calibrate){
+        memcpy(floatbuf1, buf1Stor, 2*CALIBRATION_LENGTH);
+        memcpy(floatbuf2, buf2Stor, 2*CALIBRATION_LENGTH);
+        memcpy(floatbuf3, buf3Stor, 2*CALIBRATION_LENGTH);
+
+        phaseCorrectSignal(floatbuf1, floatbuf2, floatbuf3, CALIBRATION_LENGTH);
+
+        xcorr(floatbuf1, floatbuf3, resultAC, CALIBRATION_LENGTH);
+        xcorr(floatbuf2, floatbuf3, resultBC, CALIBRATION_LENGTH);
+        xcorr(floatbuf1, floatbuf2, resultAB, CALIBRATION_LENGTH);
+
+        maxAC = 0.0, maxBC = 0.0, maxAB = 0.0;
+        //printf("I got before the search\n");
+        for(i = 0; i < (2*CALIBRATION_LENGTH); i++){
+            float magAC = (crealf(resultAC[i]) * crealf(resultAC[i])) + (cimagf(resultAC[i]) * cimagf(resultAC[i]));
+            float magBC = (crealf(resultBC[i]) * crealf(resultBC[i])) + (cimagf(resultBC[i]) * cimagf(resultBC[i]));
+            float magAB = (crealf(resultAB[i]) * crealf(resultAB[i])) + (cimagf(resultAB[i]) * cimagf(resultAB[i]));
+            if(magAC > maxAC){
+                locAC = i;
+                maxAC = magAC;
+                //printf("Max AC: %f\n", maxAC);
+            }
+            if(magBC > maxBC){
+                locBC = i;
+                maxBC = magBC;
+            }
+            if(magAB > maxAB){
+                locAB = i;
+                maxAB = magAB;
+            }
+        }
+        float curAC = cargf(resultAC[locAC]) * 180.0/M_PI;
+        float curBC = cargf(resultBC[locBC]) * 180.0/M_PI;
+
+        printf("Before AC: %f\t BC: %f\n", phaseCorrectionAC, phaseCorrectionBC);
+        if((curAC > 0.5 || curAC < -0.5) && stopAC == 0)
+            phaseCorrectionAC -= 1.0*cargf(resultAC[locAC]) * 180.0/M_PI;
+        else
+            stopAC = 1;
+        if((curBC > 0.5 || curBC < -0.5) && stopBC == 0)
+            phaseCorrectionBC -= 1.0*cargf(resultBC[locBC]) * 180.0/M_PI;
+        else
+            stopBC = 1;
+
+        if(phaseCorrectionAC > 360.0)
+            phaseCorrectionAC -=360.0;
+        else if(phaseCorrectionAC < -360.0)
+            phaseCorrectionAC += 360.0;
+
+        if(phaseCorrectionBC > 360.0)
+            phaseCorrectionBC -=360.0;
+        else if(phaseCorrectionBC < -360.0)
+            phaseCorrectionBC += 360.0;
+
+        printf("After AC: %f\t BC: %f\n", phaseCorrectionAC, phaseCorrectionBC);
+        printf("Does this work? AC: %f\t BC: %f\n", cargf(resultAC[locAC]) * 180.0/M_PI, cargf(resultBC[locBC]) * 180.0/M_PI);
+
+
+        if(((curAC < 0.5 && curAC > -0.5) && (curBC < 0.5 && curBC > -0.5)) || (stopAC && stopBC) )
+            calibrate = 0;
+    }
+    memcpy(floatbuf1, buf1Stor, 2*CALIBRATION_LENGTH);
+    memcpy(floatbuf2, buf2Stor, 2*CALIBRATION_LENGTH);
+    memcpy(floatbuf3, buf3Stor, 2*CALIBRATION_LENGTH);
+    phaseCorrectionAC += 19.0;
+    phaseCorrectSignal(floatbuf1, floatbuf2, floatbuf3,CALIBRATION_LENGTH);
+
+    xcorr(floatbuf1, floatbuf3, resultAC, CALIBRATION_LENGTH);
+    xcorr(floatbuf2, floatbuf3, resultBC, CALIBRATION_LENGTH);
+    xcorr(floatbuf1, floatbuf2, resultAB, CALIBRATION_LENGTH);
+
+    maxAC = 0.0, maxBC = 0.0, maxAB = 0.0;
+    //printf("I got before the search\n");
+    for(i = 0; i < (2*CALIBRATION_LENGTH); i++){
+        float magAC = (crealf(resultAC[i]) * crealf(resultAC[i])) + (cimagf(resultAC[i]) * cimagf(resultAC[i]));
+        float magBC = (crealf(resultBC[i]) * crealf(resultBC[i])) + (cimagf(resultBC[i]) * cimagf(resultBC[i]));
+        float magAB = (crealf(resultAB[i]) * crealf(resultAB[i])) + (cimagf(resultAB[i]) * cimagf(resultAB[i]));
+        if(magAC > maxAC){
+            locAC = i;
+            maxAC = magAC;
+            //printf("Max AC: %f\n", maxAC);
+        }
+        if(magBC > maxBC){
+            locBC = i;
+            maxBC = magBC;
+        }
+        if(magAB > maxAB){
+            locAB = i;
+            maxAB = magAB;
+        }
+    }
+    printf("Does this work? AC: %f\t BC: %f\n", cargf(resultAC[locAC]) * 180.0/M_PI, cargf(resultBC[locBC]) * 180.0/M_PI);*/
+
+
+
+    free(resultAC);
+    free(resultBC);
+    free(resultAB);
+    /*free(buf1Stor);
+    free(buf2Stor);
+    free(buf3Stor);*/
+
 }
-/*
-int main(){
+
+/*int main(){
     //Open the Data file for testing
     FILE *file;
     int x, i = 0;
@@ -832,7 +917,7 @@ int main(){
     fft_init();
     correlateInit();
 
-    file = fopen("sdr0_lastOneV76.dat", "r");
+    file = fopen("sdr0_lastOneV120.dat", "r");
 
     if (!file){
         printf("There was a problem oping up data set 0\n");
@@ -842,7 +927,7 @@ int main(){
 
     fclose(file);
 
-    file = fopen("sdr1_lastOneV76.dat", "r");
+    file = fopen("sdr1_lastOneV120.dat", "r");
 
     if (!file){
         printf("There was a problem oping up data set 1\n");
@@ -853,7 +938,7 @@ int main(){
 
     fclose(file);
 
-    file = fopen("sdr2_lastOneV76.dat", "r");
+    file = fopen("sdr2_lastOneV120.dat", "r");
 
     if (!file){
         printf("There was a problem oping up data set 2\n");
@@ -864,12 +949,10 @@ int main(){
 
     fclose(file);
     findPhaseDifference(sdr0Data, sdr1Data, sdr2Data);
-    printf("Phase Correction AC: %f\n", phaseCorrectionAC);
-    printf("Phase Correction BC: %f\n", phaseCorrectionBC);
-    printf("Phase Correction AB: %f\n", phaseCorrectionAB);
     DSP(sdr0Data, sdr1Data, sdr2Data);
 
+    for(i = 0; i < NUM_BANDS; i++)
+        printf("Band %d: %f\n", i, angleOfArrival[i]);
 
     return 0;
-}
-*/
+}*/

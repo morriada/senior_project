@@ -31,7 +31,8 @@ static fftw_complex *fft1in, *fft1out, *fft2in, *fft2out, *fft3in, *fft3out, *ff
 static fftw_plan fft1plan, fft2plan, fft3plan, fft4plan, fft5plan, fft6plan;
 float  complex peaks[3][NUM_BANDS][numFFTs];
 int    peakLocations[3][NUM_BANDS][numFFTs], signalLocation[NUM_BANDS], signalLength = 4*distance, startA, startB, startC;
-float  angleOfArrival[NUM_BANDS], phaseCorrectionAC, phaseCorrectionBC, phaseCorrectionAB, phaseAC, phaseBC, timeDifferenceAC, timeDifferenceBC;
+extern float  angleOfArrival[NUM_BANDS];
+float phaseCorrectionAC, phaseCorrectionBC, phaseCorrectionAB, phaseAC, phaseBC, timeDifferenceAC, timeDifferenceBC;
 
 int numberToSubtract = 2;
 
@@ -274,12 +275,32 @@ void findSignalPeaks(int band){
 
 float findSignal(){
     //Initializ Variables
-    int i, j, k, maxLocation[3][NUM_BANDS] = {{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0}};
+    int i, j, k, l, maxLocation[3][NUM_BANDS] = {{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0}};
     float max[3][NUM_BANDS] = {{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0}};
     float averageNoise[3][NUM_BANDS] = {{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0}};
-
-    //Find the max of each band, location of the max, and the average noise level in that band.
+   /* int signalLoc[3][NUM_BANDS] = {{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0}};
+    int signalLocation_Mortality[3][NUM_BANDS] = {{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0}};
     for(i = 0; i < 3; i++){
+	for(j = 0; j < NUM_BANDS; j++){
+		for(k = 0; k < numFFTs; k++){
+			int isSignal = 0;
+			int curLocation = peakLocations[i][j][k];
+			for(l = 1; l < 7; l++){
+				if(curLocation = peakLocations[i][j][k+l])
+					isSignal++;
+			}
+			if(isSignal == 4 || isSignal == 5){
+				printf("Channel %d\t Band %d\t Found Signal curLocation = %d\n",i,j, curLocation);
+				if(signalLoc[3][NUM_BANDS] == 0)
+					signalLoc[3][NUM_BANDS] = curLocation;
+				else
+					signalLocation_Mortality[3][NUM_BANDS] = curLocation;
+			}
+		}
+	}
+    }*/
+    //Find the max of each band, location of the max, and the average noise level in that band.
+  for(i = 0; i < 3; i++){
         for(j = 0; j < NUM_BANDS; j++){
             for(k = 0; k < numFFTs; k++){
                 float peakmag = sqrt(crealf(peaks[i][j][k])*crealf(peaks[i][j][k]) + cimagf(peaks[i][j][k])*cimagf(peaks[i][j][k]));
@@ -358,8 +379,9 @@ float findSignal(){
             }
             finalNumRight[i][j] = numberRight;
             finalNumLeft[i][j] = numberLeft;
-            location[i][j] = numberRight + numberLeft;
-            /*if(location[i][j] <= 5 && location[i][j] >= 3)
+      	    location[i][j] = numberRight + numberLeft;
+      
+    /*if(location[i][j] <= 5 && location[i][j] >= 3)
                 printf("Band %d: SDR%d Left: %d Right: %d Location: %d Max: %d\n", j, i, numberLeft, numberRight, peakLocations[i][j][maxLocation[i][j]], maxLocation[i][j] );*/
         }
     }
@@ -404,8 +426,10 @@ float findSignal(){
 
         if( ((numLeft[0][j] + numRight[0][j] + 1) >= 3) && ((numLeft[0][j] + numRight[0][j] + 1) <= 5) && ((numLeft[1][j] + numRight[1][j] + 1) >= 3) && ((numLeft[1][j] + numRight[1][j] + 1) <= 5) &&((numLeft[2][j] + numRight[2][j] + 1) >= 3) && ((numLeft[2][j] + numRight[2][j] + 1) <= 5) && (location[0][j] >= 4 && location[0][j] <= 5) && (location[1][j] >= 4 && location[1][j] <= 5) && (location[2][j] >=4 && location[0][j] <=5)){
 
-            int location[3] = {(maxLocation[0][j] - finalNumLeft[0][j] + 1),(maxLocation[1][j] - finalNumLeft[1][j] + 1),(maxLocation[2][j] - finalNumLeft[2][j] + 1)};
+//  if(signalLoc[0][j] != 0 && signalLoc[1][j] != 0 && signalLoc[2][j] != 0){
+           // int location[3] = {(maxLocation[0][j] - finalNumLeft[0][j] + 1),(maxLocation[1][j] - finalNumLeft[1][j] + 1),(maxLocation[2][j] - finalNumLeft[2][j] + 1)};
             signalLocation[j] = distance * locationForAnalysis[j];
+	  // 	signalLocation[j] = distance * signalLoc[0][j];
             //printf("SDR1 Max: %d\t SDR2 Max: %d\t SDR3 Max: %d\n", maxLocation[0][j], maxLocation[1][j], maxLocation[2][j]);
             printf("SDR1 Max: %f\t SDR2 Max: %f\t SDR3 Max: %f\n", cargf(peaks[0][j][maxLocation[0][j]]) * 180.0/M_PI, cargf(peaks[1][j][maxLocation[1][j]]) * 180.0/M_PI, cargf(peaks[2][j][maxLocation[2][j]]) * 180.0/M_PI);
             printf("AC: %f\t BC: %f\n",cargf(peaks[0][j][maxLocation[0][j]]) * 180.0/M_PI - cargf(peaks[2][j][maxLocation[2][j]]) * 180.0/M_PI + phaseCorrectionAC, cargf(peaks[1][j][maxLocation[1][j]]) * 180.0/M_PI - cargf(peaks[2][j][maxLocation[2][j]]) * 180.0/M_PI + phaseCorrectionBC);
@@ -552,7 +576,6 @@ int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data){
         else
             floatbuf1[i] = 0.0;
     }
-
     fftw_execute(fft1plan);
 
     uint8_t *buf2 = SDR2_data;
@@ -598,14 +621,14 @@ int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data){
         }
     }
     findSignal();
-
+printf("After findSignal()\n");
     for(i = 0; i < NUM_BANDS; i++){
         signalFFT(floatbuf1, floatbuf2, floatbuf3, signalLocation[i]);
         if(signalLocation[i] != -1){
             findSignalPeaks(i);
         }
     }
-
+printf("After findSignalPeaks()\n");
     fftw_free(resultAC);
     fftw_free(resultAB);
     fftw_free(resultBC);
@@ -623,6 +646,15 @@ int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data){
     fftw_free(fft4out);
     fftw_free(fft5out);
     fftw_free(fft6out);
+
+/*    fftw_destroy_plan(fft2plan);
+    fftw_destroy_plan(fft3plan);
+    fftw_destroy_plan(fft3plan);
+    fftw_destroy_plan(fft5plan);
+    fftw_destroy_plan(fft6plan);
+*/
+
+    fftw_cleanup();
 
     return 0;
 
@@ -878,6 +910,9 @@ void findPhaseDifference(uint8_t *SDR1_cal, uint8_t *SDR2_cal, uint8_t *SDR3_cal
     free(resultAC);
     free(resultBC);
     free(resultAB);
+    free(floatbuf1);
+    free(floatbuf2);
+    free(floatbuf3);
     /*free(buf1Stor);
     free(buf2Stor);
     free(buf3Stor);*/

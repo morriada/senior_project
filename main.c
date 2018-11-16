@@ -51,6 +51,7 @@ void * dodsp(void * ptr)
   uint8_t * sdr0Data = malloc(2*BSIZE);
   uint8_t * sdr1Data = malloc(2*BSIZE);
   uint8_t * sdr2Data = malloc(2*BSIZE);
+  int i;
 
   memcpy(sdr0Data, sdrs[0].buffer[0], BSIZE);
   memcpy(sdr0Data + BSIZE, sdrs[0].buffer[1], BSIZE);
@@ -65,7 +66,8 @@ void * dodsp(void * ptr)
   findPhaseDifference(sdr0Data, sdr1Data, sdr2Data);
   // Find Signal in the Data Haystack
   DSP(sdr0Data, sdr1Data, sdr2Data);
-
+  for(i = 0; i<NUM_BANDS; i++)
+	printf("Band %d: %f\n", i, angleOfArrival[i]);
   free(sdr0Data);
   free(sdr1Data);
   free(sdr2Data);
@@ -172,7 +174,7 @@ int main(void)
       rtlsdr_bias(0, 0x1f);
 
       printf("Frequency: %d\n", freq[n]);
-
+      sleep(1);
       // Create a collection thread for each RTL-SDR
       for(i = 0; i < NUM_SDRS; ++i)
       {
@@ -205,7 +207,7 @@ int main(void)
       write(sdr1[WRITE], &ret, 1);
       write(sdr2[WRITE], &ret, 1);
 
-      // Sleep for 100 milliseconds
+      // Sleep for 250 milliseconds
       usleep(250000);
       // Switch RTL-SDRs Bias for Data Collection
       rtlsdr_bias(0, 0x00);

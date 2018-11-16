@@ -41,6 +41,8 @@
 #define COLLAR_TOLERANCE 2500
 #define NUM_BANDS 12
 
+float angleOfArrival[NUM_BANDS];
+
 /*
  * correlateInit - Description.
  */

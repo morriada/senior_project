@@ -33,7 +33,7 @@
 #include "rtl-sdr.h"
 
 // Define Macros
-#define BSIZE 5079040	// 240000 Calibration Data
+#define BSIZE 5279744	// 240000 Calibration Data
 			// 5760 Dead Space
 			// 4833280 Actual Data
 #define NUM_SDRS 3

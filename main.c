@@ -34,6 +34,7 @@ extern void sdrs_setup(void);
 extern void rtlsdr_setup(int, rtlsdr_dev_t *);
 extern void rtlsdr_bias(int, uint8_t);
 extern void collect(int, int, rtlsdr_dev_t *);
+extern void read_config(void);
 
 // Initialize variables
 extern pthread_mutex_t file;
@@ -132,6 +133,7 @@ int main(void)
   pthread_t dsp = (pthread_t)malloc(sizeof(pthread_t));
   // Prepare structures
   sdrs_setup();
+  read_config();
   // Initialize pipes
   if((pipe(sdr0) < 0) || (pipe(sdr1) < 0) || (pipe(sdr2) < 0))
   {
@@ -144,11 +146,12 @@ int main(void)
     printf("\n mutex init has failed\n");
     return 1;
   }
-  n = 3;
+n = 37;
   while(1)
   {
-//    for(n = 0; n < 4; ++n)
-//    {
+  //  for(n = 0; n < 40; ++n)
+  //  {
+  //  if(!skip[n]) {
       struct thread_struct tmp[3];
 
       for(i = 0; i < NUM_SDRS; ++i)
@@ -226,15 +229,16 @@ int main(void)
       rtlsdr_close(super.dev);
 
       // Perform DSP
-      if(pthread_create(&dsp, NULL, dodsp, (void *)NULL)) {
+      /*if(pthread_create(&dsp, NULL, dodsp, (void *)NULL)) {
         fprintf(stderr, "Error creating thread\n");
         exit(1);
       }
       if(pthread_join(dsp, NULL)) {
         fprintf(stderr, "Error joining thread\n");
         exit(1);
-      }
- //   }
+      }*/
+//    }
+//    }
   }
 
   // Destroy mutex

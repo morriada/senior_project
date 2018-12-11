@@ -22,6 +22,7 @@
 #define numFFTs ( SAMPLE_TIME / FFT_TIME )
 #define distance ( SAMPLE_LENGTH / numFFTs )
 #define fftLength (SAMPLE_LENGTH/SAMPLE_TIME)
+#define fftCalSkip 50
 
 static int nreceivers = 0, corrlen = 0, fft1n = 0, fft2n = 0;
 
@@ -30,7 +31,7 @@ static int sync_debug = 1;
 static fftw_complex *fft1in, *fft1out, *fft2in, *fft2out, *fft3in, *fft3out, *fft4in, *fft4out, *fft5in, *fft5out, *fft6in, *fft6out;
 static fftw_plan fft1plan, fft2plan, fft3plan, fft4plan, fft5plan, fft6plan;
 float  complex peaks[3][NUM_BANDS][numFFTs];
-int    peakLocations[3][NUM_BANDS][numFFTs], signalLocation[NUM_BANDS], signalLength = 4*distance, startA, startB, startC;
+int    peakLocations[3][NUM_BANDS][numFFTs], signalLocation[NUM_BANDS], signalLength = 6*distance, startA, startB, startC;
 extern float  angleOfArrival[NUM_BANDS];
 float phaseCorrectionAC, phaseCorrectionBC, phaseCorrectionAB, phaseAC, phaseBC, timeDifferenceAC, timeDifferenceBC;
 
@@ -274,11 +275,11 @@ void findSignalPeaks(int band){
 }
 
 float findSignal(){
-    //Initializ Variables
+    //Initialize Variables
     int i, j, k, l, maxLocation[3][NUM_BANDS] = {{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0}};
     float max[3][NUM_BANDS] = {{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0}};
     float averageNoise[3][NUM_BANDS] = {{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0}};
-   /* int signalLoc[3][NUM_BANDS] = {{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0}};
+    int signalLoc[3][NUM_BANDS] = {{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0}};
     int signalLocation_Mortality[3][NUM_BANDS] = {{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0}};
     for(i = 0; i < 3; i++){
 	for(j = 0; j < NUM_BANDS; j++){
@@ -291,18 +292,19 @@ float findSignal(){
 			}
 			if(isSignal == 4 || isSignal == 5){
 				printf("Channel %d\t Band %d\t Found Signal curLocation = %d\n",i,j, curLocation);
-				if(signalLoc[3][NUM_BANDS] == 0)
+				/*if(signalLoc[3][NUM_BANDS] == 0)
 					signalLoc[3][NUM_BANDS] = curLocation;
 				else
 					signalLocation_Mortality[3][NUM_BANDS] = curLocation;
+			*/
 			}
 		}
 	}
-    }*/
+    }
     //Find the max of each band, location of the max, and the average noise level in that band.
   for(i = 0; i < 3; i++){
         for(j = 0; j < NUM_BANDS; j++){
-            for(k = 0; k < numFFTs; k++){
+            for(k = fftCalSkip; k < numFFTs; k++){
                 float peakmag = sqrt(crealf(peaks[i][j][k])*crealf(peaks[i][j][k]) + cimagf(peaks[i][j][k])*cimagf(peaks[i][j][k]));
                 averageNoise[i][j] += peakmag;
                 if(max[i][j] < peakmag){
@@ -311,6 +313,7 @@ float findSignal(){
                 }
             }
             averageNoise[i][j] /= (float)numFFTs;
+	    printf("Band %d: SDR: %d Max Location: %d\n",j, i, maxLocation[i][j]);
         }
     }
 
@@ -331,7 +334,7 @@ float findSignal(){
             numRight[i][j] = 0;
             badRightFlag = 0;
             badLeftFlag = 0;
-            float threshold = max[i][j] - ( (2*max[i][j]-averageNoise[i][j]) /3 );
+            float threshold = max[i][j] - ( 2*(max[i][j]-averageNoise[i][j]) /3 );
             for(k = 1; k < 4; k++){
                 float peakmagMin = sqrt(crealf(peaks[i][j][maxLocation[i][j] - k])*crealf(peaks[i][j][maxLocation[i][j] - k]) + cimagf(peaks[i][j][maxLocation[i][j] - k])*cimagf(peaks[i][j][maxLocation[i][j] - k]));
                 float peakmagPlus = sqrt(crealf(peaks[i][j][maxLocation[i][j] + k])*crealf(peaks[i][j][maxLocation[i][j] + k]) + cimagf(peaks[i][j][maxLocation[i][j] + k])*cimagf(peaks[i][j][maxLocation[i][j] + k]));

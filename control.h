@@ -60,7 +60,8 @@ typedef struct thread_struct {
 	rtlsdr_dev_t *dev;
 } thread_struct;
 
-extern volatile uint32_t freq[4];
+extern volatile uint32_t freq[40];
+extern volatile int skip[40];
 
 /*
  * sdrs_setup - Initializes the structures for each RTL-SDR.
@@ -71,6 +72,12 @@ void sdrs_setup(void);
  * free_controls - Free malloc'd variables.
  */
 void free_controls(void);
+
+/*
+ * read_config - Reads a configuration file to limit search to specified
+ * 							frequencies.
+ */
+void read_config(void);
 
 /*
  * rtlsdr_setup - Sets up an individual RTL-SDR at the beginning of the program.

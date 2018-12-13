@@ -34,7 +34,6 @@ extern void sdrs_setup(void);
 extern void rtlsdr_setup(int, rtlsdr_dev_t *);
 extern void rtlsdr_bias(int, uint8_t);
 extern void collect(int, int, rtlsdr_dev_t *);
-extern void read_config(void);
 
 // Initialize variables
 extern pthread_mutex_t file;
@@ -43,7 +42,7 @@ int sdr0[2];
 int sdr1[2];
 int sdr2[2];
 
-int m_time = 100000;
+int m_time = 250000;
 
 // DSP Thread
 void * dodsp(void * ptr)
@@ -146,12 +145,11 @@ int main(void)
     printf("\n mutex init has failed\n");
     return 1;
   }
-n = 37;
+  n = 3;
   while(1)
   {
   //  for(n = 0; n < 40; ++n)
   //  {
-  //  if(!skip[n]) {
       struct thread_struct tmp[3];
 
       for(i = 0; i < NUM_SDRS; ++i)
@@ -211,7 +209,7 @@ n = 37;
       write(sdr2[WRITE], &ret, 1);
 
       // Sleep for 250 milliseconds
-      usleep(250000);
+      usleep(m_time);
       // Switch RTL-SDRs Bias for Data Collection
       rtlsdr_bias(0, 0x00);
 
@@ -237,7 +235,6 @@ n = 37;
         fprintf(stderr, "Error joining thread\n");
         exit(1);
       }*/
-//    }
 //    }
   }
 

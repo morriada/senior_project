@@ -31,15 +31,17 @@
 /* Signal Processing Includes */
 #include "fftw3.h"
 
-#define CALIBRATION_LENGTH 600000
+#define CALIBRATION_LENGTH 660000
 #define CALIBRATION_SKIP 400000
 #define FFT_TIME 5
-#define SAMPLE_TIME 2253
-#define SAMPLE_LENGTH 5406720
+#define SAMPLE_TIME 2130
+#define SAMPLE_LENGTH 5279744
 #define SAMPLE_FREQUENCY 1200000
+#define SAMPLE_RATE 2400000
 #define COLLAR_OFFSET 43000
 #define COLLAR_TOLERANCE 2500
 #define NUM_BANDS 12
+
 
 float angleOfArrival[NUM_BANDS];
 

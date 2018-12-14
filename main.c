@@ -36,7 +36,7 @@ extern void rtlsdr_bias(int, uint8_t);
 extern void collect(int, int, rtlsdr_dev_t *);
 
 // Initialize variables
-extern pthread_mutex_t file;
+// extern pthread_mutex_t file;
 
 int sdr0[2];
 int sdr1[2];
@@ -47,6 +47,8 @@ int m_time = 250000;
 // DSP Thread
 void * dodsp(void * ptr)
 {
+  struct thread_struct * ts = (struct thread_struct *)ptr;
+
   // Initialize
   uint8_t * sdr0Data = malloc(2*BSIZE);
   uint8_t * sdr1Data = malloc(2*BSIZE);
@@ -67,10 +69,16 @@ void * dodsp(void * ptr)
   // Find Signal in the Data Haystack
   DSP(sdr0Data, sdr1Data, sdr2Data);
   for(i = 0; i<NUM_BANDS; i++)
-	printf("Band %d: %f\n", i, angleOfArrival[i]);
+	 printf("Band %d: %f\n", i, angleOfArrival[i]);
   free(sdr0Data);
   free(sdr1Data);
   free(sdr2Data);
+
+  for(i = 0; i < NUM_BANDS; ++i)
+  {
+    if(angleOfArrival[i] != 0.0)
+      file_save(ts->freq, i, angleOfArrival[i], 0);
+  }
 
   pthread_exit(NULL);
 }
@@ -148,8 +156,8 @@ int main(void)
   n = 3;
   while(1)
   {
-  //  for(n = 0; n < 40; ++n)
-  //  {
+    for(n = 0; n < 4; ++n)
+    {
       struct thread_struct tmp[3];
 
       for(i = 0; i < NUM_SDRS; ++i)
@@ -227,15 +235,16 @@ int main(void)
       rtlsdr_close(super.dev);
 
       // Perform DSP
-      /*if(pthread_create(&dsp, NULL, dodsp, (void *)NULL)) {
+      if(pthread_create(&dsp, NULL, dodsp, (void *)ts)) {
+        struct thread_struct * ts = &tmp[0];
         fprintf(stderr, "Error creating thread\n");
         exit(1);
       }
       if(pthread_join(dsp, NULL)) {
         fprintf(stderr, "Error joining thread\n");
         exit(1);
-      }*/
-//    }
+      }
+    }
   }
 
   // Destroy mutex

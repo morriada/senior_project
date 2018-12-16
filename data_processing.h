@@ -46,27 +46,27 @@
 float angleOfArrival[NUM_BANDS];
 
 /*
- * correlateInit - Description.
- */
+* correlateInit - Description.
+*/
 void correlateInit(void);
 
 /*
- * fft_init - Description.
- */
+* fft_init - Description.
+*/
 void fft_init(void);
 
 /*
- * DSP - Description.
- * @param SDR1_data Data from first SDR
- * @param SDR2_data Data from second SDR
- * @param SDR3_data Data from third SDR
- */
+* DSP - Description.
+* @param SDR1_data Data from first SDR
+* @param SDR2_data Data from second SDR
+* @param SDR3_data Data from third SDR
+*/
 int DSP(uint8_t *SDR1_data, uint8_t *SDR2_data, uint8_t *SDR3_data);
 
 /*
- * findPhaseDifference - Description.
- * @param parameter Description
- */
+* findPhaseDifference - Description.
+* @param parameter Description
+*/
 void findPhaseDifference(uint8_t *SDR1_cal, uint8_t *SDR2_cal, uint8_t *SDR3_cal);
 
 #endif // SENIOR_PROJECT_CONTROL_H

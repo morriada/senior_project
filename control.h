@@ -34,8 +34,8 @@
 
 // Define Macros
 #define BSIZE 5279744	// 240000 Calibration Data
-			// 5760 Dead Space
-			// 4833280 Actual Data
+// 5760 Dead Space
+// 4833280 Actual Data
 #define NUM_SDRS 3
 #define READ 0
 #define SIZE 100
@@ -63,33 +63,33 @@ typedef struct thread_struct {
 extern volatile uint32_t freq[4];
 
 /*
- * sdrs_setup - Initializes the structures for each RTL-SDR.
- */
+* sdrs_setup - Initializes the structures for each RTL-SDR.
+*/
 void sdrs_setup(void);
 
 /*
- * free_controls - Free malloc'd variables.
- */
+* free_controls - Free malloc'd variables.
+*/
 void free_controls(void);
 
 /*
- * rtlsdr_setup - Sets up an individual RTL-SDR at the beginning of the program.
- * @param id ID of RTL-SDR - expecting an integer from 0 to NUM_SDRS
- */
+* rtlsdr_setup - Sets up an individual RTL-SDR at the beginning of the program.
+* @param id ID of RTL-SDR - expecting an integer from 0 to NUM_SDRS
+*/
 void rtlsdr_setup(int f, rtlsdr_dev_t *dev);
 
 /*
- * rtlsdr_bias - Sets bias of Supervisory RTL-SDR for data collection from the
- * 							noise card or from the antenna's.
- * @param i2c_val 2 byte value for register on RTL-SDR
- */
+* rtlsdr_bias - Sets bias of Supervisory RTL-SDR for data collection from the
+* 							noise card or from the antenna's.
+* @param i2c_val 2 byte value for register on RTL-SDR
+*/
 void rtlsdr_bias(int bias, uint8_t i2c_val);
 
 /*
- * collect - Colects the data as set up from the rtlsdr_setup function.
- * @param id ID of RTL-SDR - expecting an integer from 0 to NUM_SDRS
- * @param f frequency id - expecting an integer from 0 to 3
- */
+* collect - Colects the data as set up from the rtlsdr_setup function.
+* @param id ID of RTL-SDR - expecting an integer from 0 to NUM_SDRS
+* @param f frequency id - expecting an integer from 0 to 3
+*/
 void collect(int id, int f, rtlsdr_dev_t *dev);
 
 #endif // SENIOR_PROJECT_CONTROL_H

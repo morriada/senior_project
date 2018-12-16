@@ -69,19 +69,19 @@ void rtlsdr_setup(int f, rtlsdr_dev_t *dev)
 	int r;
 	// Set the sample rate of the rtl-sdr
 	if((r = rtlsdr_set_sample_rate(dev, sample_rate)) < 0)
-		printf("WARNING: [%d] Failed to set sample rate.\n", r);
+	printf("WARNING: [%d] Failed to set sample rate.\n", r);
 	// Disable dithering
 	if((r = rtlsdr_set_dithering(dev, disable_dither)) < 0)
-		printf("WARNING: [%d] Failed to set dithering.\n", r);
+	printf("WARNING: [%d] Failed to set dithering.\n", r);
 	// Set the IF frequency
-//	if((r = rtlsdr_set_if_freq(dev, if_freq)) < 0)
-//		printf("WARNING: [%d] Failed to set if frequency.\n", r);
+	//	if((r = rtlsdr_set_if_freq(dev, if_freq)) < 0)
+	//		printf("WARNING: [%d] Failed to set if frequency.\n", r);
 	// Set the center frequency
 	if((r = rtlsdr_set_center_freq(dev, freq[f])) < 0)
-		printf("WARNING: [%d] Failed to set if frequency.\n", r);
+	printf("WARNING: [%d] Failed to set if frequency.\n", r);
 	// Set the tuner gain mode to automatic
 	if((r = rtlsdr_set_tuner_gain_mode(dev, auto_gain)) < 0)
-		printf("WARNING: [%d] Failed to set tuner gain.\n", r);
+	printf("WARNING: [%d] Failed to set tuner gain.\n", r);
 }
 
 void file_save(int frequency, int band, float phase, int mort)
@@ -103,9 +103,9 @@ void file_save(int frequency, int band, float phase, int mort)
 
 	// Save buffer to file for sdr_num and frequency
 	snprintf(path, sizeof(char) * SIZE, "/home/pi/data/freq%i.csv",
-					freq[frequency] + (band * 100000));
+	freq[frequency] + (band * 100000));
 	snprintf(line, sizeof(char) * SIZE, "%i %l %i\n",
-					freq[frequency] + (band * 100000), phase, mort);
+	freq[frequency] + (band * 100000), phase, mort);
 	fp = fopen(path, "wb");
 	fwrite(line, 1, BSIZE, fp);
 	fclose(fp);
@@ -113,30 +113,30 @@ void file_save(int frequency, int band, float phase, int mort)
 
 /*void file_save(int sdr_num, int f)
 {
-	FILE *fp;
+FILE *fp;
 
-	// Current Time
-	char path[SIZE];
-	time_t curtime;
-	struct tm *loctime;
-	curtime = time(NULL);
-	loctime = localtime(&curtime);
-	int sec = loctime->tm_sec;
-	int min = loctime->tm_min;
-	int hr = loctime->tm_hour;
-	int day = loctime->tm_mday;
-	int mon = loctime->tm_mon;
-	int yr = loctime->tm_year;
+// Current Time
+char path[SIZE];
+time_t curtime;
+struct tm *loctime;
+curtime = time(NULL);
+loctime = localtime(&curtime);
+int sec = loctime->tm_sec;
+int min = loctime->tm_min;
+int hr = loctime->tm_hour;
+int day = loctime->tm_mday;
+int mon = loctime->tm_mon;
+int yr = loctime->tm_year;
 
-	// Save buffer to file for sdr_num and frequency
-	snprintf(path, sizeof(char) * SIZE, "/home/pi/data/sdr%i_freq%i_%i%i%i%i%i%i.dat",
-					sdr_num, freq[f], yr, mon, day, hr, min, sec);
-	pthread_mutex_lock(&file);
-	fp = fopen(path, "wb");
-	fwrite(sdrs[sdr_num].buffer[0], 1, BSIZE, fp);
-	fwrite(sdrs[sdr_num].buffer[1], 1, BSIZE, fp);
-	fclose(fp);
-	pthread_mutex_unlock(&file);
+// Save buffer to file for sdr_num and frequency
+snprintf(path, sizeof(char) * SIZE, "/home/pi/data/sdr%i_freq%i_%i%i%i%i%i%i.dat",
+sdr_num, freq[f], yr, mon, day, hr, min, sec);
+pthread_mutex_lock(&file);
+fp = fopen(path, "wb");
+fwrite(sdrs[sdr_num].buffer[0], 1, BSIZE, fp);
+fwrite(sdrs[sdr_num].buffer[1], 1, BSIZE, fp);
+fclose(fp);
+pthread_mutex_unlock(&file);
 }*/
 
 void collect(int id, int f, rtlsdr_dev_t *dev)
@@ -170,15 +170,15 @@ void rtlsdr_bias(int bias, uint8_t i2c_val)
 	int r;
 	// Set the bias tee by setting the gpio bit 0 to bias_off
 	if((r = rtlsdr_set_bias_tee(super.dev, bias)) < 0)
-		printf("WARNING: [%d] Failed to set bias tee.\n", r);
+	printf("WARNING: [%d] Failed to set bias tee.\n", r);
 	// Set rtlsdr repeater for the i2communication via RTL2838
 	rtlsdr_set_i2c_repeater(super.dev, i2c_repeater_on);
 	// Set register to the output
 	if((r = rtlsdr_i2c_write_reg(super.dev, i2c_addr, 0x03, 0x00)) < 0)
-		printf("WARNING: [%d] Failed to write to i2c.\n", r);
+	printf("WARNING: [%d] Failed to write to i2c.\n", r);
 	// Set value to the register as described in the table
 	if((r = rtlsdr_i2c_write_reg(super.dev, i2c_addr, 0x01, i2c_val)) < 0)
-		printf("WARNING: [%d] Failed to write to i2c.\n", r);
+	printf("WARNING: [%d] Failed to write to i2c.\n", r);
 	// Close the i2c_repeater
 	rtlsdr_set_i2c_repeater(super.dev, i2c_repeater_off);
 }

@@ -57,7 +57,8 @@ void * dodsp(void * ptr)
 
     int i;
 
-    //
+    // Move both buffers for each SDR into a single data buffer
+    // for that SDR
     memcpy(sdr0Data, sdrs[0].buffer[0], BSIZE);
     memcpy(sdr0Data + BSIZE, sdrs[0].buffer[1], BSIZE);
     memcpy(sdr1Data, sdrs[1].buffer[0], BSIZE);
@@ -65,18 +66,25 @@ void * dodsp(void * ptr)
     memcpy(sdr2Data, sdrs[2].buffer[0], BSIZE);
     memcpy(sdr2Data + BSIZE, sdrs[2].buffer[1], BSIZE);
 
+    // Initialize variables and structures for FFTs and
+    // correlation of the noise/calibration and data
     fft_init();
     correlateInit();
-    // Find Phase Difference
+    // Find Phase Difference of each SDR from calibration data
     findPhaseDifference(sdr0Data, sdr1Data, sdr2Data);
     // Find Signal in the Data Haystack
     DSP(sdr0Data, sdr1Data, sdr2Data);
+
+    // Print of angleOfArrival for each band in the 1 MHz
     for(i = 0; i<NUM_BANDS; i++)
-    printf("Band %d: %f\n", i, angleOfArrival[i]);
+        printf("Band %d: %f\n", i, angleOfArrival[i]);
+
+    // Free the data created above as it is no longer needed
     free(sdr0Data);
     free(sdr1Data);
     free(sdr2Data);
 
+    // Save data to a file
     for(i = 0; i < NUM_BANDS; ++i)
     {
         if(angleOfArrival[i] != 0.0)
@@ -89,6 +97,7 @@ void * dodsp(void * ptr)
 // Individual SDR Collection Thread
 void * collect_t(void * ptr)
 {
+    // Initialize thread structure for Frequency use later
     struct thread_struct * ts = (struct thread_struct *)ptr;
 
     // Tell Super thread we're at collection
@@ -121,16 +130,22 @@ void * collect_t(void * ptr)
     pthread_exit(NULL);
 }
 
+// Initializes SDRs for Collection of Data
 void * init_t(void * ptr)
 {
+    // Initialize thread structure for Frequency use later
     struct thread_struct * ts = (struct thread_struct *)ptr;
     rtlsdr_dev_t *dev = NULL;
 
+    // Opens the SDR interface
     rtlsdr_open(&dev, ts->id);
+    // Adds SDR interface to global structure and thread structure
     ts->dev = dev;
     sdrs[ts->id].dev = dev;
+    // Sets up the SDR for data collection
     rtlsdr_setup(ts->freq, dev);
     rtlsdr_reset_buffer(dev);
+    // Sets bias tee for noise collection for calibration data
     rtlsdr_set_bias_tee(dev, 1);
 
     pthread_exit(NULL);
@@ -151,6 +166,7 @@ int main(void)
     // Initialize pipes
     if((pipe(sdr0) < 0) || (pipe(sdr1) < 0) || (pipe(sdr2) < 0))
     {
+        // Caught an error
         printf("\n pipe init has failed\n");
         return 1;
     }
@@ -158,112 +174,129 @@ int main(void)
     // Initialize mutex
     /*if(pthread_mutex_init(&file, NULL))
     {
-    printf("\n mutex init has failed\n");
-    return 1;
-}*/
+        // Caught an error
+        printf("\n mutex init has failed\n");
+        return 1;
+    }*/
 
-while(1)
-{
-    for(n = 0; n < 4; ++n)
+    // Loop repeatedly
+    while(1)
     {
-        struct thread_struct tmp[3];
-
-        for(i = 0; i < NUM_SDRS; ++i)
+        // Cycle through the 4 1MHz channels
+        for(n = 0; n < 4; ++n)
         {
-            rtlsdr_dev_t *dev = NULL;
-            tmp[i].id = i;
-            tmp[i].freq = n;
-            tmp[i].dev = dev;
-            struct thread_struct * ts = &tmp[i];
-            if(pthread_create(&(sdrs[i].initialize_t), NULL, init_t, (void *)ts)) {
-                exit(1);
+            // Structure for thread specific data
+            struct thread_struct tmp[3];
+
+            // Initializes each SDR in a seperate thread
+            for(i = 0; i < NUM_SDRS; ++i)
+            {
+                // Setup thread specific data in structure
+                rtlsdr_dev_t *dev = NULL;
+                tmp[i].id = i;
+                tmp[i].freq = n;
+                tmp[i].dev = dev;
+                struct thread_struct * ts = &tmp[i];
+                // Create thread for initializing the SDR
+                if(pthread_create(&(sdrs[i].initialize_t), NULL, init_t, (void *)ts)) {
+                    exit(1);
+                }
             }
-        }
 
-        for(i = 0; i < NUM_SDRS; ++i)
-        {
-            if(pthread_join(sdrs[i].initialize_t, NULL)) {
-                exit(1);
+            // Waits for all SDRs to be initialized
+            for(i = 0; i < NUM_SDRS; ++i)
+            {
+                // Waits for thread to join/end
+                if(pthread_join(sdrs[i].initialize_t, NULL)) {
+                    exit(1);
+                }
             }
-        }
 
-        rtlsdr_open(&(super.dev), 3);
-        rtlsdr_bias(0, 0x1f);
+            // Open Supervisory SDR interface
+            rtlsdr_open(&(super.dev), 3);
+            // Set bias tee to correct setting for noise collection
+            // for calibration data
+            rtlsdr_bias(0, 0x1f);
 
-        printf("Frequency: %d\n", freq[n]);
-        sleep(1);
+            printf("Frequency: %d\n", freq[n]);
+            sleep(1);   // Wait for Bias Tee to finish setting
 
-        // Create a collection thread for each RTL-SDR
-        for(i = 0; i < NUM_SDRS; ++i)
-        {
-            struct thread_struct * ts = &tmp[i];
-            if(pthread_create(&(sdrs[i].collection_t), NULL, collect_t, (void *)ts)) {
+            // Create a collection thread for each RTL-SDR
+            for(i = 0; i < NUM_SDRS; ++i)
+            {
+                struct thread_struct * ts = &tmp[i];
+                if(pthread_create(&(sdrs[i].collection_t), NULL, collect_t, (void *)ts))
+                {
+                    fprintf(stderr, "Error creating thread\n");
+                    exit(1);
+                }
+            }
+
+            // Wait for SDRs to be at collection
+            int ret;
+            for(i = 0; i < NUM_SDRS; ++i)
+            {
+                ret = 0;
+                while(!ret)
+                {
+                    if (i == 0) {
+                        read(sdr0[READ], &ret, 1);
+                    } else if (i == 1) {
+                        read(sdr1[READ], &ret, 1);
+                    } else if (i == 2) {
+                        read(sdr2[READ], &ret, 1);
+                    }
+                }
+            }
+
+            // Tell threads to continue
+            ret = 0;
+            write(sdr0[WRITE], &ret, 1);
+            write(sdr1[WRITE], &ret, 1);
+            write(sdr2[WRITE], &ret, 1);
+
+            // Sleep for 250 milliseconds for calibration data
+            usleep(m_time);
+            // Switch RTL-SDRs Bias for Data Collection
+            rtlsdr_bias(0, 0x00);
+
+            // Wait for each collection thread to join
+            for(i = 0; i < NUM_SDRS; ++i)
+            {
+                if(pthread_join(sdrs[i].collection_t, NULL))
+                {
+                    fprintf(stderr, "Error joining thread\n");
+                    exit(1);
+                }
+
+                // Close RTL-SDR device
+                rtlsdr_close(sdrs[i].dev);
+            }
+
+            // Close Supervisory Channel
+            rtlsdr_close(super.dev);
+
+            // Perform DSP
+            if(pthread_create(&dsp, NULL, dodsp, (void *)ts))
+            {
+                struct thread_struct * ts = &tmp[0];
                 fprintf(stderr, "Error creating thread\n");
                 exit(1);
             }
-        }
-
-        // Wait for SDRs to be at collection
-        int ret;
-        for(i = 0; i < NUM_SDRS; ++i)
-        {
-            ret = 0;
-            while(!ret)
+            // Wait for DSP to finish
+            if(pthread_join(dsp, NULL))
             {
-                if (i == 0) {
-                    read(sdr0[READ], &ret, 1);
-                } else if (i == 1) {
-                    read(sdr1[READ], &ret, 1);
-                } else if (i == 2) {
-                    read(sdr2[READ], &ret, 1);
-                }
-            }
-        }
-
-        // Tell threads to continue
-        ret = 0;
-        write(sdr0[WRITE], &ret, 1);
-        write(sdr1[WRITE], &ret, 1);
-        write(sdr2[WRITE], &ret, 1);
-
-        // Sleep for 250 milliseconds
-        usleep(m_time);
-        // Switch RTL-SDRs Bias for Data Collection
-        rtlsdr_bias(0, 0x00);
-
-        // Wait for each collection thread to join
-        for(i = 0; i < NUM_SDRS; ++i)
-        {
-            if(pthread_join(sdrs[i].collection_t, NULL)) {
                 fprintf(stderr, "Error joining thread\n");
                 exit(1);
             }
-
-            // Close RTL-SDR device
-            rtlsdr_close(sdrs[i].dev);
-        }
-
-        // Close Supervisory Channel
-        rtlsdr_close(super.dev);
-
-        // Perform DSP
-        if(pthread_create(&dsp, NULL, dodsp, (void *)ts)) {
-            struct thread_struct * ts = &tmp[0];
-            fprintf(stderr, "Error creating thread\n");
-            exit(1);
-        }
-        if(pthread_join(dsp, NULL)) {
-            fprintf(stderr, "Error joining thread\n");
-            exit(1);
         }
     }
-}
 
-// Destroy mutex
-//pthread_mutex_destroy(&file);
+    // Destroy mutex
+    //pthread_mutex_destroy(&file);
 
-// Free Space
-free_controls();
+    // Free Space
+    free_controls();
 
-return 0;
+    return 0;
 }
